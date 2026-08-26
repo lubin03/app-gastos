@@ -14,6 +14,7 @@ import { importTransactions, exportTransactions } from './controllers/importExpo
 import { getDashboardStats } from './controllers/dashboard';
 import { createMagicTransaction } from './controllers/magic';
 import { requireAuth as authenticate } from './middleware/auth';
+import { runMigrations } from './db/migrate';
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -63,6 +64,12 @@ app.get('/api/budgets', authenticate, getBudgets);
 app.put('/api/budgets/:id', authenticate, updateBudget);
 app.delete('/api/budgets/:id', authenticate, deleteBudget);
 
-app.listen(port, () => {
-  console.log(`Backend server running on http://localhost:${port}`);
+// Run migrations and start server
+runMigrations().then(() => {
+  app.listen(port, () => {
+    console.log(`Backend server running on http://localhost:${port}`);
+  });
+}).catch(err => {
+  console.error("Failed to start server due to migration error:", err);
+  process.exit(1);
 });

@@ -32,8 +32,8 @@ services:
       - postgres
     # Remove ports mapping in production if you only want Nginx to access it,
     # but for Dokploy debugging you can leave it or remove it.
-    # ports:
-    #   - "3000:3000"
+    ports:
+      - "3000:3000"
 
   frontend:
     build:
@@ -41,8 +41,8 @@ services:
       dockerfile: Dockerfile
     container_name: app_gastos_frontend
     restart: always
-    # Eliminamos el mapeo de puertos al host (80:80) porque Dokploy usa el puerto 80 para su router interno.
-    # Dokploy enrutará el tráfico a este contenedor automáticamente.
+    ports:
+      - "8080:80"
     depends_on:
       - backend
 

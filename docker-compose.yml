@@ -33,7 +33,7 @@ services:
     # Remove ports mapping in production if you only want Nginx to access it,
     # but for Dokploy debugging you can leave it or remove it.
     ports:
-      - "3000:3000"
+      - "8081:3000"
 
   frontend:
     build:

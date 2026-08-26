@@ -41,8 +41,8 @@ services:
       dockerfile: Dockerfile
     container_name: app_gastos_frontend
     restart: always
-    ports:
-      - "80:80"
+    # Eliminamos el mapeo de puertos al host (80:80) porque Dokploy usa el puerto 80 para su router interno.
+    # Dokploy enrutará el tráfico a este contenedor automáticamente.
     depends_on:
       - backend
 

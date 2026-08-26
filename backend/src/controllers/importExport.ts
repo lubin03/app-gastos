@@ -76,22 +76,30 @@ export const importTransactions = async (req: Request, res: Response) => {
       const isExpense = val < 0;
       const amount = Math.abs(val);
       const type = isExpense ? 'expense' : 'income';
-      const paid = situacion.toLowerCase() === 'pago';
       const dateStr = parseDate(rawDate);
 
       // Match or Create Account
       let accountId = null;
+      let accType = 'debit';
       let accountMatch = accounts.find(a => a.name.toLowerCase() === cuentaName.toLowerCase());
       if (accountMatch) {
         accountId = accountMatch.id;
+        accType = accountMatch.type;
       } else {
-        const accType = cuentaName.toLowerCase().includes('tarjeta') ? 'credit_card' : 'debit';
+        accType = cuentaName.toLowerCase().includes('tarjeta') ? 'credit_card' : 'debit';
         const newAccRes = await query(
           'INSERT INTO accounts (user_id, name_encrypted, type) VALUES ($1, $2, $3) RETURNING id',
           [userId, encrypt(cuentaName), accType]
         );
         accountId = newAccRes.rows[0].id;
         accounts.push({ id: accountId, name: cuentaName, type: accType }); // cache it
+      }
+
+      let paid = true;
+      if (situacion && situacion.trim() !== '') {
+        paid = situacion.toLowerCase() === 'pago';
+      } else {
+        paid = accType !== 'credit_card';
       }
 
       // Match or Create Category
@@ -133,6 +141,76 @@ export const importTransactions = async (req: Request, res: Response) => {
       );
       
       imported++;
+    }
+
+    // Now process Transfers if the sheet exists
+    const transferSheetName = workbook.SheetNames.find(s => s.toLowerCase().includes('transferencia'));
+    if (transferSheetName) {
+      const transferSheet = workbook.Sheets[transferSheetName];
+      const transferData: any[] = xlsx.utils.sheet_to_json(transferSheet, { header: 1 });
+      
+      if (transferData.length >= 2) {
+        const tHeaders = transferData[0] as string[];
+        const tHeaderMap = tHeaders.reduce((acc, h, i) => { acc[h] = i; return acc; }, {} as any);
+        
+        for (let i = 1; i < transferData.length; i++) {
+          const row = transferData[i];
+          if (!row || row.length === 0) continue;
+          
+          const rawDate = row[tHeaderMap['Fecha']];
+          const originName = row[tHeaderMap['Conta origem']];
+          const destName = row[tHeaderMap['Conta destino']];
+          const val = parseFloat(row[tHeaderMap['Valor']]) || 0;
+          const tags = row[tHeaderMap['Etiquetas']] || '';
+          
+          if (val === 0 || !originName || !destName) continue;
+          
+          const dateStr = parseDate(rawDate);
+          
+          // Helper to get or create account
+          const getOrCreateAccount = async (name: string) => {
+            let accountMatch = accounts.find(a => a.name.toLowerCase() === name.toLowerCase());
+            if (accountMatch) return accountMatch.id;
+            
+            const type = name.toLowerCase().includes('tarjeta') ? 'credit_card' : 'debit';
+            const newAccRes = await query(
+              'INSERT INTO accounts (user_id, name_encrypted, type) VALUES ($1, $2, $3) RETURNING id',
+              [userId, encrypt(name), type]
+            );
+            const id = newAccRes.rows[0].id;
+            accounts.push({ id, name, type });
+            return id;
+          };
+          
+          const originId = await getOrCreateAccount(originName);
+          const destId = await getOrCreateAccount(destName);
+          
+          // Match or create category 'Transferencia'
+          let categoryId = null;
+          const catName = 'Transferencia';
+          let catMatch = categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
+          if (catMatch) {
+            categoryId = catMatch.id;
+          } else {
+            const newCatRes = await query(
+              'INSERT INTO categories (user_id, name, type) VALUES ($1, $2, $3) RETURNING id',
+              [userId, catName, 'transfer']
+            );
+            categoryId = newCatRes.rows[0].id;
+            categories.push({ id: categoryId, name: catName, parent_id: null });
+          }
+
+          // Insert transfer
+          await query(
+            `INSERT INTO transactions 
+             (account_id, destination_account_id, amount, category_id, date, tags_encrypted, type, paid) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [originId, destId, Math.abs(val), categoryId, dateStr, tags ? encrypt(tags) : null, 'transfer', true]
+          );
+          
+          imported++;
+        }
+      }
     }
 
     res.status(200).json({ message: `Successfully imported ${imported} transactions` });

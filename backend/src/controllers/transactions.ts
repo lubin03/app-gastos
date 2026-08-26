@@ -8,9 +8,11 @@ export const getTransactions = async (req: Request, res: Response) => {
     const { startDate, endDate } = req.query;
 
     let queryStr = `
-      SELECT t.* 
+      SELECT t.*, a.name_encrypted as account_name_encrypted,
+             d.name_encrypted as dest_account_name_encrypted
       FROM transactions t
       JOIN accounts a ON t.account_id = a.id
+      LEFT JOIN accounts d ON t.destination_account_id = d.id
       WHERE a.user_id = $1
     `;
     const params: any[] = [userId];
@@ -27,6 +29,9 @@ export const getTransactions = async (req: Request, res: Response) => {
     const transactions = result.rows.map(row => ({
       id: row.id,
       account_id: row.account_id,
+      destination_account_id: row.destination_account_id,
+      account_name: row.account_name_encrypted ? decrypt(row.account_name_encrypted) : '',
+      destination_account_name: row.dest_account_name_encrypted ? decrypt(row.dest_account_name_encrypted) : '',
       amount: row.amount,
       category_id: row.category_id,
       date: row.date,
@@ -47,35 +52,43 @@ export const getTransactions = async (req: Request, res: Response) => {
 export const createTransaction = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const { amount, category_id, date, description, tags, type } = req.body;
+    const { amount, category_id, date, description, tags, type, paid, destination_account_id } = req.body;
     const account_id = req.body.account_id || req.body.accountId;
 
     // Validate account belongs to user
-    const accResult = await query('SELECT id FROM accounts WHERE id = $1 AND user_id = $2', [account_id, userId]);
+    const accResult = await query('SELECT id, type FROM accounts WHERE id = $1 AND user_id = $2', [account_id, userId]);
     if (accResult.rowCount === 0) {
       return res.status(403).json({ error: 'Invalid account' });
     }
+    const accountType = accResult.rows[0].type;
 
     const descEncrypted = description ? encrypt(description) : null;
     const tagsEncrypted = tags ? encrypt(tags) : null;
 
+    let finalPaid = paid;
+    if (finalPaid === undefined) {
+      finalPaid = accountType !== 'credit_card';
+    }
+
     const result = await query(
       `INSERT INTO transactions 
-       (account_id, amount, category_id, date, description_encrypted, tags_encrypted, type) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      [account_id, amount, category_id, date, descEncrypted, tagsEncrypted, type]
+       (account_id, amount, category_id, date, description_encrypted, tags_encrypted, type, paid, destination_account_id) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [account_id, amount, category_id, date, descEncrypted, tagsEncrypted, type, finalPaid, destination_account_id || null]
     );
 
     const row = result.rows[0];
     res.status(201).json({
       id: row.id,
       account_id: row.account_id,
+      destination_account_id: row.destination_account_id,
       amount: row.amount,
       category_id: row.category_id,
       date: row.date,
       description: row.description_encrypted ? decrypt(row.description_encrypted) : '',
       tags: row.tags_encrypted ? decrypt(row.tags_encrypted) : '',
       type: row.type,
+      paid: row.paid,
       created_at: row.created_at
     });
   } catch (error) {
@@ -115,7 +128,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const { id } = req.params;
-    const { amount, category_id, date, description, tags, type } = req.body;
+    const { amount, category_id, date, description, tags, type, paid, destination_account_id } = req.body;
     const account_id = req.body.account_id || req.body.accountId;
 
     // Validate transaction exists and belongs to user
@@ -148,21 +161,25 @@ export const updateTransaction = async (req: Request, res: Response) => {
          date = COALESCE($4, date),
          description_encrypted = COALESCE($5, description_encrypted),
          tags_encrypted = COALESCE($6, tags_encrypted),
-         type = COALESCE($7, type)
-       WHERE id = $8 RETURNING *`,
-      [account_id, amount, category_id, date, descEncrypted, tagsEncrypted, type, id]
+         type = COALESCE($7, type),
+         paid = COALESCE($8, paid),
+         destination_account_id = $9
+       WHERE id = $10 RETURNING *`,
+      [account_id, amount, category_id, date, descEncrypted, tagsEncrypted, type, paid, destination_account_id || null, id]
     );
 
     const row = result.rows[0];
     res.status(200).json({
       id: row.id,
       account_id: row.account_id,
+      destination_account_id: row.destination_account_id,
       amount: row.amount,
       category_id: row.category_id,
       date: row.date,
       description: row.description_encrypted ? decrypt(row.description_encrypted) : '',
       tags: row.tags_encrypted ? decrypt(row.tags_encrypted) : '',
       type: row.type,
+      paid: row.paid,
       created_at: row.created_at
     });
   } catch (error) {
@@ -190,6 +207,24 @@ export const deleteTransaction = async (req: Request, res: Response) => {
     res.status(200).json({ message: 'Transaction deleted' });
   } catch (error) {
     console.error('Delete transaction error', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const deleteAllTransactions = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+
+    // Delete all transactions that belong to any account owned by the user
+    await query(`
+      DELETE FROM transactions t
+      USING accounts a
+      WHERE t.account_id = a.id AND a.user_id = $1
+    `, [userId]);
+
+    res.status(200).json({ message: 'All transactions deleted successfully' });
+  } catch (error) {
+    console.error('Delete all transactions error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

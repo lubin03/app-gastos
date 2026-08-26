@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IonContent, IonPage, IonFab, IonFabButton, IonIcon, IonSpinner, useIonViewWillEnter, IonButton, IonButtons } from '@ionic/react';
+import { IonContent, IonPage, IonFab, IonFabButton, IonIcon, IonSpinner, useIonViewWillEnter, IonButton, IonButtons, IonSegment, IonSegmentButton, IonLabel } from '@ionic/react';
 import { useLocation, useHistory } from 'react-router-dom';
 import { add, downloadOutline, pushOutline } from 'ionicons/icons';
 import { api } from '../services/api';
@@ -21,6 +21,7 @@ const Transactions: React.FC = () => {
   const [showMagic, setShowMagic] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [tab, setTab] = useState('all');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
 
@@ -45,9 +46,11 @@ const Transactions: React.FC = () => {
       const enriched = filteredTx.map((t: any) => {
         const cat = catData.find((c: any) => c.id === t.category_id);
         const isCc = ccIds.includes(t.account_id);
-        return { 
+        return {
           ...t, 
           category: cat ? cat.name : 'Unknown',
+          accountName: t.account_name,
+          destinationAccountName: t.destination_account_name,
           paid: isCc ? t.paid : undefined 
         };
       });
@@ -153,10 +156,28 @@ const Transactions: React.FC = () => {
           </div>
         </div>
 
+        <div className="ion-padding-horizontal">
+          <IonSegment value={tab} onIonChange={e => setTab(e.detail.value as string)} mode="ios" style={{ marginBottom: '16px' }}>
+            <IonSegmentButton value="all">
+              <IonLabel>Total</IonLabel>
+            </IonSegmentButton>
+            <IonSegmentButton value="pending">
+              <IonLabel>Pendientes</IonLabel>
+            </IonSegmentButton>
+            <IonSegmentButton value="paid">
+              <IonLabel>Pagos</IonLabel>
+            </IonSegmentButton>
+          </IonSegment>
+        </div>
+
         <div style={{ paddingBottom: '140px' }}>
           {loading ? <IonSpinner className="ion-margin" /> : (
             <TransactionList 
-              transactions={transactions} 
+              transactions={transactions.filter(t => {
+                if (tab === 'pending') return t.paid === false;
+                if (tab === 'paid') return t.paid === true;
+                return true;
+              })} 
               onEdit={(t) => {
                 setEditingTransaction(t);
                 setShowModal(true);

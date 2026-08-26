@@ -11,7 +11,7 @@ import {
   setupIonicReact
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { home, list, card, pieChart, pricetags } from 'ionicons/icons';
+import { home, list, card, pieChart, pricetags, analyticsOutline, barChartOutline } from 'ionicons/icons';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FilterProvider } from './context/FilterContext';
@@ -27,6 +27,9 @@ import Accounts from './pages/Accounts';
 import Budgets from './pages/Budgets';
 import Categories from './pages/Categories';
 import Profile from './pages/Profile';
+import Insights from './pages/Insights';
+import Reports from './pages/Reports';
+import CreditCards from './pages/CreditCards';
 
 /* Core CSS required for Ionic components to work properly */
 import '@ionic/react/css/core.css';
@@ -68,6 +71,9 @@ const PrivateRoutes: React.FC = () => {
         <Route exact path="/app/budgets"><Budgets /></Route>
         <Route exact path="/app/categories"><Categories /></Route>
         <Route exact path="/app/profile"><Profile /></Route>
+        <Route exact path="/app/insights"><Insights /></Route>
+        <Route exact path="/app/reports"><Reports /></Route>
+        <Route exact path="/app/credit-cards"><CreditCards /></Route>
         <Route exact path="/app"><Redirect to="/app/dashboard" /></Route>
       </IonRouterOutlet>
       <IonTabBar slot="bottom" className="custom-tab-bar">
@@ -87,9 +93,17 @@ const PrivateRoutes: React.FC = () => {
           <IonIcon icon={pieChart} />
           <IonLabel>{t('budgets.title')}</IonLabel>
         </IonTabButton>
-        <IonTabButton tab="categories" href="/app/categories">
-          <IonIcon icon={pricetags} />
-          <IonLabel>{t('categories.title')}</IonLabel>
+        <IonTabButton tab="insights" href="/app/insights">
+          <IonIcon icon={analyticsOutline} />
+          <IonLabel>Actuación</IonLabel>
+        </IonTabButton>
+        <IonTabButton tab="credit-cards" href="/app/credit-cards">
+          <IonIcon icon={card} />
+          <IonLabel>Tarjetas</IonLabel>
+        </IonTabButton>
+        <IonTabButton tab="reports" href="/app/reports">
+          <IonIcon icon={barChartOutline} />
+          <IonLabel>Informes</IonLabel>
         </IonTabButton>
       </IonTabBar>
     </IonTabs>

@@ -16,6 +16,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
   const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
   const [accountId, setAccountId] = useState('');
+  const [destinationAccountId, setDestinationAccountId] = useState('');
   const [accounts, setAccounts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const { t } = useTranslation();
@@ -31,12 +32,14 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
         setCategoryId(transaction.category_id);
         setDescription(transaction.description);
         setAccountId(transaction.account_id);
+        setDestinationAccountId(transaction.destination_account_id || '');
       } else {
         setType('expense');
         setAmount('');
         setCategoryId('');
         setDescription('');
         setAccountId('');
+        setDestinationAccountId('');
       }
     }
   }, [isOpen, transaction]);
@@ -49,6 +52,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
         category_id: categoryId,
         description,
         accountId,
+        destination_account_id: type === 'transfer' ? destinationAccountId : null,
         date: transaction ? transaction.date : new Date().toISOString()
       };
 
@@ -81,12 +85,21 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
           </IonSelect>
         </IonItem>
         <IonItem className="glass-input" lines="none">
-          <IonSelect value={accountId} onIonChange={e => setAccountId(e.detail.value)} label={t('transactions.account')} labelPlacement="floating">
+          <IonSelect value={accountId} onIonChange={e => setAccountId(e.detail.value)} label={type === 'transfer' ? t('transactions.originAccount', 'Cuenta Origen') : t('transactions.account')} labelPlacement="floating">
             {accounts.map(acc => (
               <IonSelectOption key={acc.id} value={acc.id}>{acc.name}</IonSelectOption>
             ))}
           </IonSelect>
         </IonItem>
+        {type === 'transfer' && (
+          <IonItem className="glass-input" lines="none">
+            <IonSelect value={destinationAccountId} onIonChange={e => setDestinationAccountId(e.detail.value)} label={t('transactions.destinationAccount', 'Cuenta Destino')} labelPlacement="floating">
+              {accounts.map(acc => (
+                <IonSelectOption key={acc.id} value={acc.id}>{acc.name}</IonSelectOption>
+              ))}
+            </IonSelect>
+          </IonItem>
+        )}
         <IonItem className="glass-input" lines="none">
           <IonInput type="number" value={amount} onIonInput={e => setAmount(e.detail.value!)} label={t('common.amount')} labelPlacement="floating" />
         </IonItem>

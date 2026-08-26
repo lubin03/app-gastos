@@ -8,13 +8,16 @@ dotenv.config();
 import { register, login, googleAuth, getMe, updateProfile, forgotPassword, resetPassword } from './controllers/auth';
 import { createAccount, getAccounts, updateAccount, deleteAccount, payCreditCard } from './controllers/accounts';
 import { getCategories, createCategory, updateCategory, deleteCategory } from './controllers/categories';
-import { createTransaction, getTransactions, updateTransaction, deleteTransaction, getTransactionYears } from './controllers/transactions';
+import { createTransaction, getTransactions, updateTransaction, deleteTransaction, getTransactionYears, deleteAllTransactions } from './controllers/transactions';
 import { createBudget, getBudgets, updateBudget, deleteBudget } from './controllers/budgets';
 import { importTransactions, exportTransactions } from './controllers/importExport';
 import { getDashboardStats } from './controllers/dashboard';
+import { getInsights } from './controllers/insights';
 import { createMagicTransaction } from './controllers/magic';
 import { requireAuth as authenticate } from './middleware/auth';
 import { runMigrations } from './db/migrate';
+import reportsRoutes from './routes/reports';
+import creditCardRoutes from './routes/creditCards';
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -35,6 +38,12 @@ app.post('/api/auth/reset-password', resetPassword);
 // Dashboard Route
 app.get('/api/dashboard', authenticate, getDashboardStats);
 
+// Reports Route
+app.use('/api/reports', reportsRoutes);
+
+// Insights Route
+app.get('/api/insights', authenticate, getInsights);
+
 // Accounts Routes
 app.post('/api/accounts', authenticate, createAccount);
 app.get('/api/accounts', authenticate, getAccounts);
@@ -48,8 +57,12 @@ app.post('/api/categories', authenticate, createCategory);
 app.put('/api/categories/:id', authenticate, updateCategory);
 app.delete('/api/categories/:id', authenticate, deleteCategory);
 
+// Credit Cards Routes
+app.use('/api/credit-cards', creditCardRoutes);
+
 // Transactions Routes
 app.post('/api/transactions/magic', authenticate, createMagicTransaction);
+app.delete('/api/transactions/all', authenticate, deleteAllTransactions);
 app.post('/api/transactions', authenticate, createTransaction);
 app.get('/api/transactions', authenticate, getTransactions);
 app.get('/api/transactions/years', authenticate, getTransactionYears);

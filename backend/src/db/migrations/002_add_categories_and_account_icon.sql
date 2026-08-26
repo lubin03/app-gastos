@@ -1,6 +1,6 @@
-ALTER TABLE accounts ADD COLUMN icon VARCHAR(100);
+ALTER TABLE accounts ADD COLUMN IF NOT EXISTS icon VARCHAR(100);
 
-CREATE TABLE categories (
+CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -10,12 +10,10 @@ CREATE TABLE categories (
     created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Delete existing transactions and budgets to avoid conflicts when dropping columns
-DELETE FROM transactions;
-DELETE FROM budgets;
+-- Removed DELETE statements to preserve data
 
-ALTER TABLE transactions DROP COLUMN category;
-ALTER TABLE transactions ADD COLUMN category_id UUID REFERENCES categories(id) ON DELETE SET NULL;
+ALTER TABLE transactions DROP COLUMN IF EXISTS category;
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES categories(id) ON DELETE SET NULL;
 
-ALTER TABLE budgets DROP COLUMN category;
-ALTER TABLE budgets ADD COLUMN category_id UUID REFERENCES categories(id) ON DELETE CASCADE;
+ALTER TABLE budgets DROP COLUMN IF EXISTS category;
+ALTER TABLE budgets ADD COLUMN IF NOT EXISTS category_id UUID REFERENCES categories(id) ON DELETE CASCADE;

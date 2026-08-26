@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IonContent, IonPage, IonItem, IonLabel, IonInput, IonButton, IonSpinner, IonToast, IonSelect, IonSelectOption } from '@ionic/react';
+import { IonContent, IonPage, IonItem, IonLabel, IonInput, IonButton, IonSpinner, IonToast, IonSelect, IonSelectOption, useIonAlert } from '@ionic/react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import Header from '../components/Header';
@@ -15,6 +15,7 @@ const Profile: React.FC = () => {
   
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', color: 'success' });
+  const [presentAlert] = useIonAlert();
 
   const handleUpdate = async () => {
     if (!email) {
@@ -49,6 +50,34 @@ const Profile: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDeleteAllTransactions = () => {
+    presentAlert({
+      header: '¡Cuidado!',
+      message: 'Vas a borrar TODAS tus transacciones. Esta acción NO se puede deshacer ni recuperar. ¿Estás absolutamente seguro?',
+      buttons: [
+        {
+          text: 'Cancelar',
+          role: 'cancel',
+        },
+        {
+          text: 'Sí, borrar todo',
+          role: 'destructive',
+          handler: async () => {
+            try {
+              setLoading(true);
+              await api.delete('/transactions/all');
+              setToast({ show: true, message: 'Todas las transacciones fueron eliminadas.', color: 'success' });
+            } catch (err: any) {
+              setToast({ show: true, message: 'Error al eliminar transacciones.', color: 'danger' });
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ],
+    });
   };
 
   return (
@@ -119,6 +148,24 @@ const Profile: React.FC = () => {
             style={{ '--border-radius': '12px', '--background': 'var(--ion-color-primary)' }}
           >
             {loading ? <IonSpinner name="crescent" /> : t('profile.save')}
+          </IonButton>
+        </div>
+
+        {/* Danger Zone */}
+        <div className="glass-card ion-padding ion-margin-bottom" style={{ border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+          <h2 style={{ marginTop: 0, fontWeight: 700, fontSize: '1.2rem', color: 'var(--ion-color-danger)' }}>Zona de Peligro</h2>
+          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '20px' }}>
+            Acciones destructivas para tu cuenta.
+          </p>
+          <IonButton 
+            expand="block" 
+            color="danger" 
+            fill="outline"
+            onClick={handleDeleteAllTransactions}
+            disabled={loading}
+            style={{ '--border-radius': '12px' }}
+          >
+            Borrar todas las transacciones
           </IonButton>
         </div>
 

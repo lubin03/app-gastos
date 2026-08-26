@@ -6,9 +6,9 @@ services:
     container_name: app_gastos_db
     restart: always
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: adminpassword
-      POSTGRES_DB: gastosdb
+      POSTGRES_USER: ${DB_USER:-admin}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-adminpassword}
+      POSTGRES_DB: ${DB_NAME:-gastosdb}
     ports:
       - "5432:5432"
     volumes:
@@ -21,13 +21,14 @@ services:
     container_name: app_gastos_backend
     restart: always
     environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=admin
-      - DB_PASSWORD=adminpassword
-      - DB_NAME=gastosdb
-      - JWT_SECRET=supersecret123
-      - PORT=3000
+      - DB_HOST=${DB_HOST:-postgres}
+      - DB_PORT=${DB_PORT:-5432}
+      - DB_USER=${DB_USER:-admin}
+      - DB_PASSWORD=${DB_PASSWORD:-adminpassword}
+      - DB_NAME=${DB_NAME:-gastosdb}
+      - JWT_SECRET=${JWT_SECRET:-supersecret123}
+      - PORT=${PORT:-3000}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
     depends_on:
       - postgres
     # Remove ports mapping in production if you only want Nginx to access it,

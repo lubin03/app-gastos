@@ -15,7 +15,7 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   backend:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: app_gastos_backend
@@ -42,7 +42,7 @@ services:
     container_name: app_gastos_frontend
     restart: always
     ports:
-      - "8080:80"
+      - "8082:80"
     depends_on:
       - backend
 

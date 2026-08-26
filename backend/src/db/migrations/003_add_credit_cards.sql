@@ -1,0 +1,6 @@
+ALTER TABLE accounts ADD COLUMN type VARCHAR(20) DEFAULT 'debit';
+ALTER TABLE accounts ADD COLUMN credit_limit DECIMAL(12, 2);
+ALTER TABLE accounts ADD COLUMN closing_day INT;
+ALTER TABLE accounts ADD COLUMN due_day INT;
+
+ALTER TABLE transactions ADD COLUMN paid BOOLEAN DEFAULT FALSE;

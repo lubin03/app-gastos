@@ -26,7 +26,7 @@ const renderIcon = (iconName: string) => {
     }
     return (
       <div slot="start" style={{ marginRight: '16px', display: 'flex', alignItems: 'center', width: '24px', justifyContent: 'center' }}>
-        <BankLogo name={name} size={24} />
+        <BankLogo name={name as any} size={24} />
       </div>
     );
   }
@@ -276,7 +276,7 @@ const Accounts: React.FC = () => {
                       {LOCAL_BANKS.includes(bank) ? (
                         <img src={`/assets/banks/${bank}.svg`} alt={bank} style={{ width: 24, height: 24, objectFit: 'contain' }} />
                       ) : (
-                        <BankLogo name={bank} size={24} />
+                        <BankLogo name={bank as any} size={24} />
                       )}
                     </IonButton>
                   </IonCol>

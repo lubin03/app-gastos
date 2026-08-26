@@ -216,7 +216,7 @@ const Dashboard: React.FC = () => {
                                 style={{ fontSize: '14px', fontWeight: 'bold' }} 
                               />
                             </Pie>
-                            <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                            <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
@@ -262,7 +262,7 @@ const Dashboard: React.FC = () => {
                                 style={{ fontSize: '14px', fontWeight: 'bold' }} 
                               />
                             </Pie>
-                            <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                            <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
@@ -289,7 +289,7 @@ const Dashboard: React.FC = () => {
                           <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
                           <XAxis dataKey="name" axisLine={false} tickLine={false} />
                           <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `$${value}`} />
-                          <Tooltip formatter={(value: number) => `$${value.toLocaleString()}`} />
+                          <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
                           <Legend />
                           <Bar dataKey="income" name="Ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
                           <Bar dataKey="expense" name="Gastos" fill="#f43f5e" radius={[4, 4, 0, 0]} />

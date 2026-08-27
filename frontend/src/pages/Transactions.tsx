@@ -28,6 +28,22 @@ const Transactions: React.FC = () => {
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const filterAccountId = searchParams.get('accountId');
+  const sharedText = searchParams.get('text') || searchParams.get('title') || searchParams.get('url');
+
+  useEffect(() => {
+    if (sharedText) {
+      setShowMagic(true);
+      // Clean up URL so it doesn't re-trigger on refresh
+      const newParams = new URLSearchParams(location.search);
+      newParams.delete('text');
+      newParams.delete('title');
+      newParams.delete('url');
+      history.replace({
+        pathname: location.pathname,
+        search: newParams.toString()
+      });
+    }
+  }, [sharedText, location.pathname, history, location.search]);
 
   const loadTransactions = async () => {
     try {
@@ -219,6 +235,7 @@ const Transactions: React.FC = () => {
             setShowMagic(false);
             loadTransactions();
           }}
+          initialText={sharedText || undefined}
         />
       </IonContent>
     </IonPage>

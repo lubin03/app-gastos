@@ -8,9 +8,10 @@ interface MagicModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  initialText?: string;
 }
 
-const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess }) => {
+const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, initialText }) => {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -18,6 +19,12 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess }) =
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+
+  React.useEffect(() => {
+    if (isOpen && initialText) {
+      setText(initialText);
+    }
+  }, [isOpen, initialText]);
 
   const startRecording = async () => {
     try {

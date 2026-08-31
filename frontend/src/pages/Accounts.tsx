@@ -175,6 +175,9 @@ const Accounts: React.FC = () => {
                       <h2 style={{ fontWeight: 600, fontSize: '16px', color: '#fff' }}>
                         {acc.name} {acc.is_archived && <span style={{fontSize: '10px', background: '#333', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px'}}>ARCHIVADA</span>}
                       </h2>
+                      <p style={{ fontSize: '14px', color: Number(acc.balance || 0) < 0 ? '#ef4444' : '#10b981', fontWeight: 600, marginTop: '4px' }}>
+                        {Number(acc.balance || 0) < 0 ? '-' : ''}${Math.abs(Number(acc.balance || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
                     </IonLabel>
                     <IonButton slot="end" fill="clear" onClick={(e) => openEditModal(acc, e)} color="primary">
                       <IonIcon icon={createOutline} />
@@ -196,6 +199,9 @@ const Accounts: React.FC = () => {
                       <h2 style={{ fontWeight: 600, fontSize: '16px', color: '#fff' }}>
                         {acc.name} {acc.is_archived && <span style={{fontSize: '10px', background: '#333', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px'}}>ARCHIVADA</span>}
                       </h2>
+                      <p style={{ fontSize: '14px', color: Number(acc.balance || 0) < 0 ? '#ef4444' : '#10b981', fontWeight: 600, marginTop: '4px' }}>
+                        {Number(acc.balance || 0) < 0 ? '-' : ''}${Math.abs(Number(acc.balance || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </p>
                       <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
                         Limit: <span style={{ color: '#fff' }}>${acc.credit_limit}</span> | Closing: <span style={{ color: '#fff' }}>{acc.closing_day}</span> | Due: <span style={{ color: '#fff' }}>{acc.due_day}</span>
                         {acc.network && <span> | Network: <span style={{ color: '#fff' }}>{acc.network}</span></span>}

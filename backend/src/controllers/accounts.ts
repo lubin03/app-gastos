@@ -6,7 +6,20 @@ export const getAccounts = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const result = await query(`
-      SELECT a.*, b.name as institution_name, b.code as institution_code, b.logo_url as institution_logo, b.primary_color as institution_color
+      SELECT a.*, b.name as institution_name, b.code as institution_code, b.logo_url as institution_logo, b.primary_color as institution_color,
+      COALESCE(
+        (SELECT SUM(
+          CASE 
+            WHEN t.type = 'income' THEN t.amount 
+            WHEN t.type = 'expense' THEN -t.amount 
+            WHEN t.type = 'transfer' AND t.account_id = a.id THEN -t.amount
+            WHEN t.type = 'transfer' AND t.destination_account_id = a.id THEN t.amount
+            ELSE 0 
+          END
+        ) FROM transactions t 
+          WHERE (t.account_id = a.id OR t.destination_account_id = a.id)
+        ), 0
+      ) as balance
       FROM accounts a
       LEFT JOIN banking_institutions b ON a.institution_id = b.id
       WHERE a.user_id = $1 
@@ -31,7 +44,8 @@ export const getAccounts = async (req: Request, res: Response) => {
       due_day: row.due_day,
       network: row.network,
       is_archived: row.is_archived,
-      created_at: row.created_at
+      created_at: row.created_at,
+      balance: Number(row.balance)
     }));
 
     res.status(200).json(accounts);

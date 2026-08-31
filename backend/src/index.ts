@@ -18,6 +18,10 @@ import { requireAuth as authenticate } from './middleware/auth';
 import { runMigrations } from './db/migrate';
 import reportsRoutes from './routes/reports';
 import creditCardRoutes from './routes/creditCards';
+import tagsRoutes from './routes/tags';
+import attachmentsRoutes from './routes/attachments';
+import goalsRoutes from './routes/goals';
+import institutionsRoutes from './routes/institutions';
 
 const app = express();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -59,6 +63,18 @@ app.delete('/api/categories/:id', authenticate, deleteCategory);
 
 // Credit Cards Routes
 app.use('/api/credit-cards', creditCardRoutes);
+
+// Tags Routes
+app.use('/api/tags', tagsRoutes);
+
+// Attachments Routes
+app.use('/api/attachments', attachmentsRoutes);
+
+// Goals Routes
+app.use('/api/goals', goalsRoutes);
+
+// Institutions Routes
+app.use('/api/institutions', institutionsRoutes);
 
 // Transactions Routes
 app.post('/api/transactions/magic', authenticate, createMagicTransaction);

@@ -70,6 +70,12 @@ export const importTransactions = async (req: Request, res: Response) => {
       const catName = row[headerMap['Categoria']] || 'General';
       const subCatName = row[headerMap['Subcategoria']];
       const tags = row[headerMap['Etiquetas']] || '';
+      const tipoCuentaCol = row[headerMap['TipoCuenta']] || '';
+      const esFatura = row[headerMap['EsFaturaCartao']] === true || row[headerMap['EsFaturaCartao']] === 'true';
+
+      // Skip card bill payment rows (isFaturaCartao) — they are the "Pago de Factura" transfer
+      // that will be handled as a transfer in the Transferencias sheet instead.
+      if (esFatura) continue;
 
       if (val === 0 && !desc) continue; // skip empty rows
 
@@ -86,7 +92,12 @@ export const importTransactions = async (req: Request, res: Response) => {
         accountId = accountMatch.id;
         accType = accountMatch.type;
       } else {
-        accType = cuentaName.toLowerCase().includes('tarjeta') ? 'credit_card' : 'debit';
+        // Use explicit TipoCuenta column if present, else heuristic on name
+        if (tipoCuentaCol === 'credit_card' || tipoCuentaCol === 'debit') {
+          accType = tipoCuentaCol;
+        } else {
+          accType = cuentaName.toLowerCase().includes('tarjeta') || cuentaName.toLowerCase().includes('visa') || cuentaName.toLowerCase().includes('mastercard') || cuentaName.toLowerCase().includes('amex') ? 'credit_card' : 'debit';
+        }
         const newAccRes = await query(
           'INSERT INTO accounts (user_id, name_encrypted, type) VALUES ($1, $2, $3) RETURNING id',
           [userId, encrypt(cuentaName), accType]
@@ -162,17 +173,24 @@ export const importTransactions = async (req: Request, res: Response) => {
           const destName = row[tHeaderMap['Conta destino']];
           const val = parseFloat(row[tHeaderMap['Valor']]) || 0;
           const tags = row[tHeaderMap['Etiquetas']] || '';
+          const tipoCuentaOrigen = row[tHeaderMap['TipoCuentaOrigen']] || '';
+          const tipoCuentaDestino = row[tHeaderMap['TipoCuentaDestino']] || '';
           
           if (val === 0 || !originName || !destName) continue;
           
           const dateStr = parseDate(rawDate);
           
-          // Helper to get or create account
-          const getOrCreateAccount = async (name: string) => {
+          // Helper to get or create account — respects explicit type column
+          const getOrCreateAccount = async (name: string, typeHint: string) => {
             let accountMatch = accounts.find(a => a.name.toLowerCase() === name.toLowerCase());
             if (accountMatch) return accountMatch.id;
             
-            const type = name.toLowerCase().includes('tarjeta') ? 'credit_card' : 'debit';
+            let type: string;
+            if (typeHint === 'credit_card') {
+              type = 'credit_card';
+            } else {
+              type = name.toLowerCase().includes('tarjeta') || name.toLowerCase().includes('visa') || name.toLowerCase().includes('mastercard') || name.toLowerCase().includes('amex') ? 'credit_card' : 'debit';
+            }
             const newAccRes = await query(
               'INSERT INTO accounts (user_id, name_encrypted, type) VALUES ($1, $2, $3) RETURNING id',
               [userId, encrypt(name), type]
@@ -182,8 +200,8 @@ export const importTransactions = async (req: Request, res: Response) => {
             return id;
           };
           
-          const originId = await getOrCreateAccount(originName);
-          const destId = await getOrCreateAccount(destName);
+          const originId = await getOrCreateAccount(originName, tipoCuentaOrigen);
+          const destId = await getOrCreateAccount(destName, tipoCuentaDestino);
           
           // Match or create category 'Transferencia'
           let categoryId = null;

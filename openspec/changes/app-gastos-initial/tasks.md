@@ -33,6 +33,6 @@
 - [x] 5.4 Create `frontend/src/pages/Budgets.tsx` to manage plaintext categories and spending limits.
 
 ## Phase 6: Testing & Cleanup
-- [ ] 6.1 Create `backend/tests/crypto.test.ts` to verify encryption/decryption integrity.
-- [ ] 6.2 Create `backend/tests/api.test.ts` to verify DB plaintext aggregations vs encrypted fields.
-- [ ] 6.3 Update `README.md` with setup instructions and environment variable templates.
+- [x] 6.1 Create `backend/tests/crypto.test.ts` to verify encryption/decryption integrity.
+- [x] 6.2 Create `backend/tests/api.test.ts` to verify DB plaintext aggregations vs encrypted fields.
+- [x] 6.3 Update `README.md` with setup instructions and environment variable templates.

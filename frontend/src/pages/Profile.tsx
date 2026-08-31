@@ -55,7 +55,7 @@ const Profile: React.FC = () => {
   const handleDeleteAllTransactions = () => {
     presentAlert({
       header: '¡Cuidado!',
-      message: 'Vas a borrar TODAS tus transacciones. Esta acción NO se puede deshacer ni recuperar. ¿Estás absolutamente seguro?',
+      message: 'Vas a borrar TODOS tus datos (cuentas, transacciones, categorías, presupuestos, etc). Esta acción NO se puede deshacer ni recuperar. ¿Estás absolutamente seguro?',
       buttons: [
         {
           text: 'Cancelar',
@@ -68,9 +68,9 @@ const Profile: React.FC = () => {
             try {
               setLoading(true);
               await api.delete('/transactions/all');
-              setToast({ show: true, message: 'Todas las transacciones fueron eliminadas.', color: 'success' });
+              setToast({ show: true, message: 'Todos tus datos fueron eliminados.', color: 'success' });
             } catch (err: any) {
-              setToast({ show: true, message: 'Error al eliminar transacciones.', color: 'danger' });
+              setToast({ show: true, message: 'Error al eliminar los datos.', color: 'danger' });
             } finally {
               setLoading(false);
             }
@@ -165,7 +165,7 @@ const Profile: React.FC = () => {
             disabled={loading}
             style={{ '--border-radius': '12px' }}
           >
-            Borrar todas las transacciones
+            Borrar todos mis datos
           </IonButton>
         </div>
 

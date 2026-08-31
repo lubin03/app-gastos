@@ -9,7 +9,11 @@ export const getTransactions = async (req: Request, res: Response) => {
 
     let queryStr = `
       SELECT t.*, a.name_encrypted as account_name_encrypted,
-             d.name_encrypted as dest_account_name_encrypted
+             d.name_encrypted as dest_account_name_encrypted,
+             (SELECT COALESCE(json_agg(json_build_object('id', tg.id, 'name', tg.name)), '[]')
+              FROM transaction_tags tt 
+              JOIN tags tg ON tt.tag_id = tg.id 
+              WHERE tt.transaction_id = t.id) as tag_list
       FROM transactions t
       JOIN accounts a ON t.account_id = a.id
       LEFT JOIN accounts d ON t.destination_account_id = d.id
@@ -36,7 +40,7 @@ export const getTransactions = async (req: Request, res: Response) => {
       category_id: row.category_id,
       date: row.date,
       description: row.description_encrypted ? decrypt(row.description_encrypted) : '',
-      tags: row.tags_encrypted ? decrypt(row.tags_encrypted) : '',
+      tags: row.tag_list || [],
       type: row.type,
       paid: row.paid,
       created_at: row.created_at
@@ -52,7 +56,7 @@ export const getTransactions = async (req: Request, res: Response) => {
 export const createTransaction = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const { amount, category_id, date, description, tags, type, paid, destination_account_id } = req.body;
+    const { amount, category_id, date, description, tags, type, paid, destination_account_id, installments } = req.body;
     const account_id = req.body.account_id || req.body.accountId;
 
     // Validate account belongs to user
@@ -63,33 +67,71 @@ export const createTransaction = async (req: Request, res: Response) => {
     const accountType = accResult.rows[0].type;
 
     const descEncrypted = description ? encrypt(description) : null;
-    const tagsEncrypted = tags ? encrypt(tags) : null;
 
     let finalPaid = paid;
     if (finalPaid === undefined) {
       finalPaid = accountType !== 'credit_card';
     }
 
-    const result = await query(
-      `INSERT INTO transactions 
-       (account_id, amount, category_id, date, description_encrypted, tags_encrypted, type, paid, destination_account_id) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      [account_id, amount, category_id, date, descEncrypted, tagsEncrypted, type, finalPaid, destination_account_id || null]
+    const installmentTotal = parseInt(installments, 10) || 1;
+    const installmentAmount = installmentTotal > 1 ? (Number(amount) / installmentTotal).toFixed(2) : amount;
+    
+    let firstRow: any = null;
+    let parentId: string | null = null;
+
+    for (let i = 0; i < installmentTotal; i++) {
+      const d = new Date(date || new Date());
+      d.setMonth(d.getMonth() + i);
+      const instDate = d.toISOString();
+
+      const instDesc = installmentTotal > 1 ? `${description || ''} (${i+1}/${installmentTotal})` : description;
+      const descEncrypted = instDesc ? encrypt(instDesc) : null;
+
+      const result = await query(
+        `INSERT INTO transactions 
+         (account_id, amount, category_id, date, description_encrypted, type, paid, destination_account_id, installment_current, installment_total, parent_transaction_id) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+        [account_id, installmentAmount, category_id, instDate, descEncrypted, type, finalPaid, destination_account_id || null, i + 1, installmentTotal, parentId]
+      );
+
+      const row = result.rows[0];
+      if (i === 0) {
+        firstRow = row;
+        if (installmentTotal > 1) {
+           parentId = row.id;
+           // update first row to have itself as parent if you want, or just leave null
+           await query(`UPDATE transactions SET parent_transaction_id = $1 WHERE id = $2`, [parentId, parentId]);
+        }
+      }
+
+      // Handle tags
+      if (tags && Array.isArray(tags)) {
+        for (const tagId of tags) {
+          await query('INSERT INTO transaction_tags (transaction_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [row.id, tagId]);
+        }
+      }
+    }
+
+    // Fetch tags to return for the first transaction
+    const tagsResult = await query(
+      `SELECT tg.id, tg.name FROM transaction_tags tt JOIN tags tg ON tt.tag_id = tg.id WHERE tt.transaction_id = $1`,
+      [firstRow.id]
     );
 
-    const row = result.rows[0];
     res.status(201).json({
-      id: row.id,
-      account_id: row.account_id,
-      destination_account_id: row.destination_account_id,
-      amount: row.amount,
-      category_id: row.category_id,
-      date: row.date,
-      description: row.description_encrypted ? decrypt(row.description_encrypted) : '',
-      tags: row.tags_encrypted ? decrypt(row.tags_encrypted) : '',
-      type: row.type,
-      paid: row.paid,
-      created_at: row.created_at
+      id: firstRow.id,
+      account_id: firstRow.account_id,
+      destination_account_id: firstRow.destination_account_id,
+      amount: firstRow.amount,
+      category_id: firstRow.category_id,
+      date: firstRow.date,
+      description: firstRow.description_encrypted ? decrypt(firstRow.description_encrypted) : '',
+      tags: tagsResult.rows || [],
+      type: firstRow.type,
+      paid: firstRow.paid,
+      installment_current: 1,
+      installment_total: installmentTotal,
+      created_at: firstRow.created_at
     });
   } catch (error) {
     console.error('Create transaction error', error);
@@ -150,7 +192,6 @@ export const updateTransaction = async (req: Request, res: Response) => {
     }
 
     const descEncrypted = description !== undefined ? (description ? encrypt(description) : null) : undefined;
-    const tagsEncrypted = tags !== undefined ? (tags ? encrypt(tags) : null) : undefined;
 
     const result = await query(
       `UPDATE transactions 
@@ -160,15 +201,30 @@ export const updateTransaction = async (req: Request, res: Response) => {
          category_id = COALESCE($3, category_id),
          date = COALESCE($4, date),
          description_encrypted = COALESCE($5, description_encrypted),
-         tags_encrypted = COALESCE($6, tags_encrypted),
-         type = COALESCE($7, type),
-         paid = COALESCE($8, paid),
-         destination_account_id = $9
-       WHERE id = $10 RETURNING *`,
-      [account_id, amount, category_id, date, descEncrypted, tagsEncrypted, type, paid, destination_account_id || null, id]
+         type = COALESCE($6, type),
+         paid = COALESCE($7, paid),
+         destination_account_id = $8
+       WHERE id = $9 RETURNING *`,
+      [account_id, amount, category_id, date, descEncrypted, type, paid, destination_account_id || null, id]
     );
 
     const row = result.rows[0];
+
+    // Handle tags (expecting array of tag IDs)
+    if (tags !== undefined && Array.isArray(tags)) {
+      // Clear old tags
+      await query('DELETE FROM transaction_tags WHERE transaction_id = $1', [id]);
+      // Insert new tags
+      for (const tagId of tags) {
+        await query('INSERT INTO transaction_tags (transaction_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [id, tagId]);
+      }
+    }
+
+    // Fetch tags to return
+    const tagsResult = await query(
+      `SELECT tg.id, tg.name FROM transaction_tags tt JOIN tags tg ON tt.tag_id = tg.id WHERE tt.transaction_id = $1`,
+      [id]
+    );
     res.status(200).json({
       id: row.id,
       account_id: row.account_id,
@@ -177,7 +233,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
       category_id: row.category_id,
       date: row.date,
       description: row.description_encrypted ? decrypt(row.description_encrypted) : '',
-      tags: row.tags_encrypted ? decrypt(row.tags_encrypted) : '',
+      tags: tagsResult.rows || [],
       type: row.type,
       paid: row.paid,
       created_at: row.created_at
@@ -215,16 +271,30 @@ export const deleteAllTransactions = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
 
-    // Delete all transactions that belong to any account owned by the user
+    // Delete in dependency order to respect FK constraints
+    // 1. Transaction attachments and tags (via transactions cascade)
     await query(`
       DELETE FROM transactions t
       USING accounts a
       WHERE t.account_id = a.id AND a.user_id = $1
     `, [userId]);
+    // 2. Invoices tied to accounts
+    await query(`
+      DELETE FROM credit_card_invoices ci
+      USING accounts a
+      WHERE ci.account_id = a.id AND a.user_id = $1
+    `, [userId]);
+    // 3. Accounts
+    await query('DELETE FROM accounts WHERE user_id = $1', [userId]);
+    // 4. Categories, tags, budgets, goals
+    await query('DELETE FROM categories WHERE user_id = $1', [userId]);
+    await query('DELETE FROM tags WHERE user_id = $1', [userId]);
+    await query('DELETE FROM budgets WHERE user_id = $1', [userId]);
+    await query('DELETE FROM goals WHERE user_id = $1', [userId]);
 
-    res.status(200).json({ message: 'All transactions deleted successfully' });
+    res.status(200).json({ message: 'All user data deleted successfully' });
   } catch (error) {
-    console.error('Delete all transactions error', error);
+    console.error('Delete all data error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

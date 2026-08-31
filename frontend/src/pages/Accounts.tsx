@@ -1,41 +1,40 @@
 import React, { useState } from 'react';
-import { IonContent, IonPage, IonTitle, IonToolbar, IonList, IonItem, IonLabel, IonFab, IonFabButton, IonIcon, IonModal, IonButton, IonInput, IonSpinner, useIonViewWillEnter, IonGrid, IonRow, IonCol, IonSelect, IonSelectOption, IonListHeader, IonButtons, IonHeader } from '@ionic/react';
+import { IonContent, IonPage, IonTitle, IonToolbar, IonList, IonItem, IonLabel, IonFab, IonFabButton, IonIcon, IonModal, IonButton, IonInput, IonSpinner, useIonViewWillEnter, IonGrid, IonRow, IonCol, IonSelect, IonSelectOption, IonButtons, IonHeader, IonSearchbar } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
-import { add, wallet, card, cash, home, car, cart, restaurant, airplane, medkit, school, gift, barbell, business, briefcase, laptop, phonePortrait, createOutline } from 'ionicons/icons';
+import { add, wallet, card, cash, home, car, cart, restaurant, airplane, medkit, school, gift, barbell, business, briefcase, laptop, phonePortrait, createOutline, checkmark } from 'ionicons/icons';
 import { api } from '../services/api';
 import { BankLogo } from 'paybrand';
 import Header from '../components/Header';
 import { useTranslation } from 'react-i18next';
+import { institutionService, Institution } from '../services/institutionService';
 
 const ICONS_MAP: Record<string, string> = {
   wallet, card, cash, home, car, cart, restaurant, airplane, medkit, school, gift, barbell, business, briefcase, laptop, phonePortrait
 };
 const ICONS_LIST = Object.keys(ICONS_MAP);
-const BANK_ICONS = ['bancolombia', 'nequi', 'davivienda', 'nubank', 'paypal', 'apple-pay', 'google-pay', 'stripe', 'wise', 'revolut'];
-const LOCAL_BANKS = ['bancolombia', 'nequi', 'davivienda'];
 
-const renderIcon = (iconName: string) => {
-  if (iconName?.startsWith('bank:')) {
-    const name = iconName.replace('bank:', '');
-    if (LOCAL_BANKS.includes(name)) {
+const renderIcon = (acc: any) => {
+  if (acc.institution) {
+    if (acc.institution.logo_url && acc.institution.logo_url.startsWith('/assets')) {
       return (
         <div slot="start" style={{ marginRight: '16px', display: 'flex', alignItems: 'center', width: '24px', height: '24px', justifyContent: 'center' }}>
-          <img src={`/assets/banks/${name}.svg`} alt={name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+          <img src={acc.institution.logo_url} alt={acc.institution.name} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
         </div>
       );
     }
     return (
       <div slot="start" style={{ marginRight: '16px', display: 'flex', alignItems: 'center', width: '24px', justifyContent: 'center' }}>
-        <BankLogo name={name as any} size={24} />
+        <BankLogo name={acc.institution.code as any} size={24} />
       </div>
     );
   }
-  return <IonIcon icon={ICONS_MAP[iconName] || wallet} slot="start" />;
+  return <IonIcon icon={ICONS_MAP[acc.icon] || wallet} slot="start" />;
 };
 
 const Accounts: React.FC = () => {
   const [accounts, setAccounts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [loading, setLoading] = useState(true);
   const history = useHistory();
   const { t } = useTranslation();
@@ -44,11 +43,14 @@ const Accounts: React.FC = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingAccount, setEditingAccount] = useState<any>(null);
   const [newAccountName, setNewAccountName] = useState('');
-  const [selectedIcon, setSelectedIcon] = useState('bank:bancolombia');
+  const [selectedIcon, setSelectedIcon] = useState('wallet');
+  const [selectedInstitutionId, setSelectedInstitutionId] = useState<string | null>(null);
+  const [searchBank, setSearchBank] = useState('');
   const [accountType, setAccountType] = useState('debit');
   const [creditLimit, setCreditLimit] = useState('');
   const [closingDay, setClosingDay] = useState('');
   const [dueDay, setDueDay] = useState('');
+  const [network, setNetwork] = useState('');
 
   // Pay Modal
   const [showPayModal, setShowPayModal] = useState(false);
@@ -59,12 +61,14 @@ const Accounts: React.FC = () => {
 
   const loadData = async () => {
     try {
-      const [accData, catData] = await Promise.all([
+      const [accData, catData, instData] = await Promise.all([
         api.get('/accounts'),
-        api.get('/categories')
+        api.get('/categories'),
+        institutionService.getInstitutions()
       ]);
       setAccounts(accData);
       setCategories(catData);
+      setInstitutions(instData);
     } catch (err) {
       console.error(err);
     } finally {
@@ -80,11 +84,13 @@ const Accounts: React.FC = () => {
     e.stopPropagation();
     setEditingAccount(acc);
     setNewAccountName(acc.name);
-    setSelectedIcon(acc.icon || 'bank:nubank');
+    setSelectedInstitutionId(acc.institution_id);
+    setSelectedIcon(acc.icon || 'wallet');
     setAccountType(acc.type);
     setCreditLimit(acc.credit_limit || '');
     setClosingDay(acc.closing_day || '');
     setDueDay(acc.due_day || '');
+    setNetwork(acc.network || '');
     setShowModal(true);
   };
 
@@ -93,11 +99,13 @@ const Accounts: React.FC = () => {
     try {
       const payload = { 
         name: newAccountName, 
-        icon: selectedIcon,
+        icon: selectedInstitutionId ? null : selectedIcon,
+        institution_id: selectedInstitutionId,
         type: accountType,
         credit_limit: accountType === 'credit_card' ? parseFloat(creditLimit) : null,
         closing_day: accountType === 'credit_card' ? parseInt(closingDay) : null,
-        due_day: accountType === 'credit_card' ? parseInt(dueDay) : null
+        due_day: accountType === 'credit_card' ? parseInt(dueDay) : null,
+        network: accountType === 'credit_card' ? network : null
       };
 
       if (editingAccount) {
@@ -107,11 +115,13 @@ const Accounts: React.FC = () => {
       }
 
       setNewAccountName('');
-      setSelectedIcon('bank:nubank');
+      setSelectedIcon('wallet');
+      setSelectedInstitutionId(null);
       setAccountType('debit');
       setCreditLimit('');
       setClosingDay('');
       setDueDay('');
+      setNetwork('');
       setEditingAccount(null);
       setShowModal(false);
       loadData();
@@ -160,11 +170,13 @@ const Accounts: React.FC = () => {
                 </h3>
                 {bankAccounts.map(acc => (
                   <IonItem key={acc.id} button className="glass-item" lines="none" onClick={() => history.push(`/app/transactions?accountId=${acc.id}`)}>
-                    {renderIcon(acc.icon)}
+                    {renderIcon(acc)}
                     <IonLabel>
-                      <h2 style={{ fontWeight: 600, fontSize: '16px', color: '#fff' }}>{acc.name}</h2>
+                      <h2 style={{ fontWeight: 600, fontSize: '16px', color: '#fff' }}>
+                        {acc.name} {acc.is_archived && <span style={{fontSize: '10px', background: '#333', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px'}}>ARCHIVADA</span>}
+                      </h2>
                     </IonLabel>
-                    <IonButton slot="end" fill="clear" onClick={(e) => openEditModal(acc, e)} color="light">
+                    <IonButton slot="end" fill="clear" onClick={(e) => openEditModal(acc, e)} color="primary">
                       <IonIcon icon={createOutline} />
                     </IonButton>
                   </IonItem>
@@ -179,15 +191,18 @@ const Accounts: React.FC = () => {
                 </h3>
                 {creditCards.map(acc => (
                   <IonItem key={acc.id} button className="glass-item" lines="none" onClick={() => history.push(`/app/transactions?accountId=${acc.id}`)}>
-                    {renderIcon(acc.icon)}
+                    {renderIcon(acc)}
                     <IonLabel>
-                      <h2 style={{ fontWeight: 600, fontSize: '16px', color: '#fff' }}>{acc.name}</h2>
+                      <h2 style={{ fontWeight: 600, fontSize: '16px', color: '#fff' }}>
+                        {acc.name} {acc.is_archived && <span style={{fontSize: '10px', background: '#333', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px'}}>ARCHIVADA</span>}
+                      </h2>
                       <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
                         Limit: <span style={{ color: '#fff' }}>${acc.credit_limit}</span> | Closing: <span style={{ color: '#fff' }}>{acc.closing_day}</span> | Due: <span style={{ color: '#fff' }}>{acc.due_day}</span>
+                        {acc.network && <span> | Network: <span style={{ color: '#fff' }}>{acc.network}</span></span>}
                       </p>
                     </IonLabel>
                     <IonButtons slot="end" style={{ flexDirection: 'column', height: '100%', padding: '8px 0' }}>
-                      <IonButton onClick={(e) => openEditModal(acc, e)} color="light" size="small" style={{ margin: 0, height: '24px' }}>
+                      <IonButton onClick={(e) => openEditModal(acc, e)} color="primary" fill="clear" size="small" style={{ margin: 0, height: '24px' }}>
                         <IonIcon icon={createOutline} />
                       </IonButton>
                       <IonButton onClick={(e) => { e.stopPropagation(); openPayModal(acc.id); }} color="primary" size="small" style={{ margin: '4px 0 0 0', fontWeight: 'bold' }}>
@@ -206,11 +221,14 @@ const Accounts: React.FC = () => {
           <IonFabButton onClick={() => {
             setEditingAccount(null);
             setNewAccountName('');
-            setSelectedIcon('bank:nubank');
+            setSelectedIcon('wallet');
+            setSelectedInstitutionId(null);
+            setSearchBank('');
             setAccountType('debit');
             setCreditLimit('');
             setClosingDay('');
             setDueDay('');
+            setNetwork('');
             setShowModal(true);
           }}>
             <IonIcon icon={add} />
@@ -259,39 +277,55 @@ const Accounts: React.FC = () => {
                   <IonLabel position="floating">Due Day (1-31)</IonLabel>
                   <IonInput type="number" value={dueDay} onIonInput={e => setDueDay(e.detail.value!)} />
                 </IonItem>
+                <IonItem>
+                  <IonLabel position="floating">Franquicia / Red (Opcional)</IonLabel>
+                  <IonSelect value={network} onIonChange={e => setNetwork(e.detail.value)}>
+                    <IonSelectOption value="Visa">Visa</IonSelectOption>
+                    <IonSelectOption value="Mastercard">Mastercard</IonSelectOption>
+                    <IonSelectOption value="American Express">American Express</IonSelectOption>
+                    <IonSelectOption value="Diners Club">Diners Club</IonSelectOption>
+                  </IonSelect>
+                </IonItem>
               </>
             )}
             
-            <h4 className="ion-margin-top ion-padding-horizontal">Select Icon</h4>
+            <h4 className="ion-margin-top ion-padding-horizontal">Ícono o Banco</h4>
             
-            <IonLabel className="ion-padding-horizontal" color="medium">Banks & Wallets</IonLabel>
-            <IonGrid>
-              <IonRow>
-                {BANK_ICONS.map(bank => (
-                  <IonCol size="3" key={`bank:${bank}`} className="ion-text-center">
-                    <IonButton 
-                      fill={selectedIcon === `bank:${bank}` ? "solid" : "clear"} 
-                      onClick={() => setSelectedIcon(`bank:${bank}`)}
-                    >
-                      {LOCAL_BANKS.includes(bank) ? (
-                        <img src={`/assets/banks/${bank}.svg`} alt={bank} style={{ width: 24, height: 24, objectFit: 'contain' }} />
-                      ) : (
-                        <BankLogo name={bank as any} size={24} />
-                      )}
-                    </IonButton>
-                  </IonCol>
-                ))}
-              </IonRow>
-            </IonGrid>
+            <IonLabel className="ion-padding-horizontal" color="medium">Bancos e Instituciones</IonLabel>
+            <IonSearchbar 
+              value={searchBank} 
+              onIonInput={e => setSearchBank(e.detail.value!)} 
+              placeholder="Buscar banco..." 
+              className="ion-padding-horizontal"
+              style={{ paddingBottom: 0 }}
+            />
+            <IonList style={{ maxHeight: '250px', overflowY: 'auto', margin: '0 16px', borderRadius: '8px', border: '1px solid #333' }}>
+              {institutions
+                .filter(inst => inst.name.toLowerCase().includes(searchBank.toLowerCase()) || inst.code.toLowerCase().includes(searchBank.toLowerCase()))
+                .map(inst => (
+                  <IonItem button key={inst.id} onClick={() => { setSelectedInstitutionId(inst.id); setSelectedIcon(''); }} detail={false} lines="full">
+                    {inst.logo_url && inst.logo_url.startsWith('/assets') ? (
+                      <img src={inst.logo_url} alt={inst.code} style={{ width: 24, height: 24, objectFit: 'contain', marginRight: '12px' }} slot="start" />
+                    ) : (
+                      <div slot="start" style={{ marginRight: '12px' }}><BankLogo name={inst.code as any} size={24} /></div>
+                    )}
+                    <IonLabel style={{ fontSize: '14px' }}>{inst.name}</IonLabel>
+                    {selectedInstitutionId === inst.id && <IonIcon icon={checkmark} slot="end" color="primary" />}
+                  </IonItem>
+              ))}
+            </IonList>
 
-            <IonLabel className="ion-padding-horizontal" color="medium">General Icons</IonLabel>
+            <IonLabel className="ion-padding-horizontal" color="medium">Íconos Generales</IonLabel>
             <IonGrid>
               <IonRow>
                 {ICONS_LIST.map(iconName => (
                   <IonCol size="3" key={iconName} className="ion-text-center">
                     <IonButton 
-                      fill={selectedIcon === iconName ? "solid" : "clear"} 
-                      onClick={() => setSelectedIcon(iconName)}
+                      fill={!selectedInstitutionId && selectedIcon === iconName ? "solid" : "clear"} 
+                      onClick={() => {
+                        setSelectedInstitutionId(null);
+                        setSelectedIcon(iconName);
+                      }}
                     >
                       <IonIcon icon={ICONS_MAP[iconName]} />
                     </IonButton>
@@ -303,6 +337,40 @@ const Accounts: React.FC = () => {
             <IonButton expand="block" className="ion-margin-top" onClick={handleCreate}>
               {editingAccount ? t('common.save') : t('common.add')}
             </IonButton>
+            
+            {editingAccount && !editingAccount.is_archived && (
+              <IonButton expand="block" color="warning" fill="clear" className="ion-margin-top" onClick={async () => {
+                if (window.confirm('¿Estás seguro de archivar esta cuenta? (Borrado Lógico)')) {
+                  try {
+                    await api.delete(`/accounts/${editingAccount.id}`);
+                    setEditingAccount(null);
+                    setShowModal(false);
+                    loadData();
+                  } catch (err) {
+                    console.error(err);
+                  }
+                }
+              }}>
+                Archivar Cuenta (Ocultar)
+              </IonButton>
+            )}
+
+            {editingAccount && editingAccount.is_archived && (
+              <IonButton expand="block" color="danger" fill="clear" className="ion-margin-top" onClick={async () => {
+                if (window.confirm('¿Estás seguro de ELIMINAR PERMANENTEMENTE esta cuenta? Esta acción no se puede deshacer y borrará todas las transacciones asociadas.')) {
+                  try {
+                    await api.delete(`/accounts/${editingAccount.id}?force=true`);
+                    setEditingAccount(null);
+                    setShowModal(false);
+                    loadData();
+                  } catch (err) {
+                    console.error(err);
+                  }
+                }
+              }}>
+                Eliminar Definitivamente
+              </IonButton>
+            )}
           </IonContent>
         </IonModal>
 

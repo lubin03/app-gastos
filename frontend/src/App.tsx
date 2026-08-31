@@ -11,7 +11,7 @@ import {
   setupIonicReact
 } from '@ionic/react';
 import { IonReactRouter } from '@ionic/react-router';
-import { home, list, card, pieChart, pricetags, analyticsOutline, barChartOutline } from 'ionicons/icons';
+import { home, list, card, pieChart, pricetags, analyticsOutline, barChartOutline, flagOutline } from 'ionicons/icons';
 
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FilterProvider } from './context/FilterContext';
@@ -23,6 +23,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
+import Goals from './pages/Goals';
 import Accounts from './pages/Accounts';
 import Budgets from './pages/Budgets';
 import Categories from './pages/Categories';
@@ -67,6 +68,7 @@ const PrivateRoutes: React.FC = () => {
       <IonRouterOutlet>
         <Route exact path="/app/dashboard"><Dashboard /></Route>
         <Route exact path="/app/transactions"><Transactions /></Route>
+        <Route exact path="/app/goals"><Goals /></Route>
         <Route exact path="/app/accounts"><Accounts /></Route>
         <Route exact path="/app/budgets"><Budgets /></Route>
         <Route exact path="/app/categories"><Categories /></Route>
@@ -84,6 +86,10 @@ const PrivateRoutes: React.FC = () => {
         <IonTabButton tab="transactions" href="/app/transactions">
           <IonIcon icon={list} />
           <IonLabel>{t('transactions.title')}</IonLabel>
+        </IonTabButton>
+        <IonTabButton tab="goals" href="/app/goals">
+          <IonIcon icon={flagOutline} />
+          <IonLabel>Metas</IonLabel>
         </IonTabButton>
         <IonTabButton tab="accounts" href="/app/accounts">
           <IonIcon icon={card} />

@@ -11,13 +11,15 @@ export class ApiError extends Error {
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   const token = localStorage.getItem('token');
   
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(options.headers as Record<string, string> || {}),
-  };
-
+  const headers = new Headers(options.headers);
+  if (!headers.has('Content-Type') && !(options.body instanceof FormData)) {
+    headers.set('Content-Type', 'application/json');
+  }
   if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+  if (options.body instanceof FormData) {
+    headers.delete('Content-Type');
   }
 
   const response = await fetch(`${API_URL}${endpoint}`, {
@@ -49,10 +51,10 @@ export const api = {
     fetchWithAuth(endpoint, { ...options, method: 'GET' }),
   
   post: (endpoint: string, data: any, options?: RequestInit) => 
-    fetchWithAuth(endpoint, { ...options, method: 'POST', body: JSON.stringify(data) }),
+    fetchWithAuth(endpoint, { ...options, method: 'POST', body: data instanceof FormData ? data : JSON.stringify(data) }),
   
   put: (endpoint: string, data: any, options?: RequestInit) => 
-    fetchWithAuth(endpoint, { ...options, method: 'PUT', body: JSON.stringify(data) }),
+    fetchWithAuth(endpoint, { ...options, method: 'PUT', body: data instanceof FormData ? data : JSON.stringify(data) }),
   
   delete: (endpoint: string, options?: RequestInit) => 
     fetchWithAuth(endpoint, { ...options, method: 'DELETE' }),

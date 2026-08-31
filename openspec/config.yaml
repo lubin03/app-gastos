@@ -1,23 +1,25 @@
 schema: spec-driven
 
 context: |
-  Tech stack: New project (No existing code detected)
-  Architecture: Not established
-  Testing: Not established
-  Style: Not established
+  Tech stack: Ionic/React 19 (frontend) + Node/Express 5 (backend), TypeScript throughout
+  Architecture: REST API monorepo — frontend Vite/Ionic SPA, backend Express+pg (PostgreSQL)
+  Testing: Vitest (unit) + Cypress (E2E) on frontend; no backend tests yet
+  Style: ESLint + TypeScript strict on frontend; tsx watch for backend dev
+  Data encryption: AES on sensitive fields (account names, descriptions, tags) via utils/crypto
+  Import format expected: XLSX with columns Fecha/Descripción/Valor/Cuenta/Situación/Categoria
 
 testing:
   strict_tdd: false
-  runner: Not found
+  runner: vitest (frontend) / no runner (backend)
   layers:
-    unit: false
-    integration: false
-    e2e: false
-  coverage: false
+    unit: true  # vitest
+    integration: true  # @testing-library/react
+    e2e: true  # cypress
+  coverage: true  # vitest --coverage
   quality:
-    linter: Not found
-    type_checker: Not found
-    formatter: Not found
+    linter: eslint (frontend)
+    type_checker: tsc (both)
+    formatter: not configured
 
 strict_tdd: false
 

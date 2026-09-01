@@ -195,7 +195,7 @@ const Accounts: React.FC = () => {
           {loading ? <div className="ion-text-center ion-padding"><IonSpinner name="crescent" color="primary" /></div> : (
             <>
               {/* Summary Cards */}
-              <IonGrid className="ion-no-padding ion-margin-bottom">
+              <IonGrid className="ion-margin-bottom">
                 <IonRow>
                   <IonCol size="12" sizeMd="6">
                     <div className="glass-card ion-padding gradient-success" style={{ marginBottom: '12px' }}>

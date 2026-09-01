@@ -118,7 +118,7 @@ const Dashboard: React.FC = () => {
           {loading ? (
             <div className="ion-text-center ion-margin-top"><IonSpinner name="crescent" color="primary" /></div>
           ) : (
-            <IonGrid className="ion-no-padding">
+            <IonGrid>
               <IonRow>
                 <IonCol size="12" sizeMd="6" className="ion-padding-bottom">
                   <div className="glass-card gradient-primary ion-padding" style={{ position: 'relative', height: '100%', minHeight: '140px' }}>
@@ -140,7 +140,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 </IonCol>
 
-                <IonCol size="6" sizeMd="6" style={{ paddingRight: '6px', paddingTop: '4px' }}>
+                <IonCol size="6" sizeMd="6" style={{ paddingTop: '4px' }}>
                   <div className="glass-card ion-padding" style={{ background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
                     <IonIcon icon={trendingUpOutline} style={{ color: '#10b981', fontSize: '24px', marginBottom: '6px' }} />
                     <p style={{ margin: 0, fontSize: '12px', color: '#10b981', fontWeight: 600 }}>{t('dashboard.income')}</p>
@@ -150,7 +150,7 @@ const Dashboard: React.FC = () => {
                   </div>
                 </IonCol>
                 
-                <IonCol size="6" sizeMd="6" style={{ paddingLeft: '6px', paddingTop: '4px' }}>
+                <IonCol size="6" sizeMd="6" style={{ paddingTop: '4px' }}>
                   <div className="glass-card ion-padding" style={{ background: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.2)' }}>
                     <IonIcon icon={trendingDownOutline} style={{ color: '#f43f5e', fontSize: '24px', marginBottom: '6px' }} />
                     <p style={{ margin: 0, fontSize: '12px', color: '#f43f5e', fontWeight: 600 }}>{t('dashboard.expenses')}</p>

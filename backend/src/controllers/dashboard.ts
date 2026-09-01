@@ -6,36 +6,46 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     const userId = (req as any).user.userId;
     const { startDate, endDate } = req.query;
 
-    // 1. Calculate All-Time Balances (Bank Total and CC Debt)
-    // Bank Total = Income - Expense on debit accounts
-    // CC Debt = Expense - Income on credit_card accounts where paid = false
+    // 1. Calculate Period Balances (Bank Total and CC Debt up to endDate)
+    let txDateFilter = '';
+    const balanceParams: any[] = [userId];
+    if (endDate) {
+      balanceParams.push(endDate);
+      txDateFilter = ` AND t.date < $2::date + interval '1 day'`;
+    }
+
     const balancesResult = await query(`
       WITH normalized_txs AS (
         SELECT a.type as account_type, t.type as tx_type, t.paid, t.amount
         FROM transactions t
         JOIN accounts a ON t.account_id = a.id
-        WHERE a.user_id = $1 AND t.type != 'transfer'
+        WHERE a.user_id = $1 AND t.type != 'transfer'${txDateFilter}
         
         UNION ALL
         
         SELECT a.type as account_type, 'expense' as tx_type, t.paid, t.amount
         FROM transactions t
         JOIN accounts a ON t.account_id = a.id
-        WHERE a.user_id = $1 AND t.type = 'transfer'
+        WHERE a.user_id = $1 AND t.type = 'transfer'${txDateFilter}
         
         UNION ALL
         
         SELECT d.type as account_type, 'income' as tx_type, t.paid, t.amount
         FROM transactions t
         JOIN accounts d ON t.destination_account_id = d.id
-        WHERE d.user_id = $1 AND t.type = 'transfer'
+        WHERE d.user_id = $1 AND t.type = 'transfer'${txDateFilter}
       )
       SELECT account_type as type, tx_type, paid, SUM(amount) as total
       FROM normalized_txs
       GROUP BY account_type, tx_type, paid
-    `, [userId]);
+    `, balanceParams);
 
-    let bankTotal = 0;
+    // Initial balance sum for bank/cash accounts
+    const initRes = await query(
+      `SELECT SUM(initial_balance) as init_sum FROM accounts WHERE user_id = $1 AND type != 'credit_card'`,
+      [userId]
+    );
+    let bankTotal = parseFloat(initRes.rows[0]?.init_sum || '0');
     let ccDebt = 0;
 
     balancesResult.rows.forEach(row => {

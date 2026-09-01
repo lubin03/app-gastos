@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import * as xlsx from 'xlsx';
 import { query } from '../db';
 import { encrypt, decrypt } from '../utils/crypto';
+import { computeInvoicePeriod, getOrCreateInvoice } from '../utils/billingCycle';
 
 // Helper to parse DD/MM/YYYY to Date string YYYY-MM-DD
 const parseDate = (dateStr: string | number) => {
@@ -28,8 +29,8 @@ export const importTransactions = async (req: Request, res: Response) => {
     }
 
     const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
+    const txSheetName = workbook.SheetNames.find(s => s.toLowerCase().includes('transacc')) || workbook.SheetNames[0];
+    const sheet = workbook.Sheets[txSheetName];
     const data: any[] = xlsx.utils.sheet_to_json(sheet, { header: 1 });
 
     if (data.length < 2) {
@@ -49,8 +50,74 @@ export const importTransactions = async (req: Request, res: Response) => {
     const headerMap = headers.reduce((acc, h, i) => { acc[h] = i; return acc; }, {} as any);
 
     // Fetch existing accounts
-    const accRes = await query('SELECT id, name_encrypted, type FROM accounts WHERE user_id = $1', [userId]);
-    const accounts = accRes.rows.map(r => ({ id: r.id, name: decrypt(r.name_encrypted), type: r.type }));
+    const accRes = await query('SELECT id, name_encrypted, type, initial_balance, closing_day, due_day, credit_limit, network FROM accounts WHERE user_id = $1', [userId]);
+    const accounts: { id: string; name: string; type: string; initial_balance?: number; closing_day?: number | null; due_day?: number | null; credit_limit?: number | null; network?: string | null }[] = accRes.rows.map(r => ({
+      id: r.id,
+      name: (decrypt(r.name_encrypted) || '').trim(),
+      type: r.type,
+      initial_balance: Number(r.initial_balance || 0),
+      closing_day: r.closing_day,
+      due_day: r.due_day,
+      credit_limit: r.credit_limit ? Number(r.credit_limit) : null,
+      network: r.network
+    }));
+
+    // Process Cuentas sheet if present
+    const accountsSheetName = workbook.SheetNames.find(s => s.toLowerCase().includes('cuenta') || s.toLowerCase().includes('account'));
+    if (accountsSheetName) {
+      const accSheet = workbook.Sheets[accountsSheetName];
+      const accData: any[] = xlsx.utils.sheet_to_json(accSheet, { header: 1 });
+      if (accData.length >= 2) {
+        const aHeaders = (accData[0] as string[]).map(h => String(h || '').trim());
+        const aHeaderMap = aHeaders.reduce((acc, h, i) => { acc[h.toLowerCase()] = i; return acc; }, {} as any);
+
+        for (let i = 1; i < accData.length; i++) {
+          const row = accData[i];
+          if (!row || row.length === 0) continue;
+
+          const accName = row[aHeaderMap['cuenta']] ?? row[aHeaderMap['nombre']] ?? row[aHeaderMap['name']] ?? row[0];
+          if (!accName || !String(accName).trim()) continue;
+
+          const tipoRaw = row[aHeaderMap['tipocuenta']] ?? row[aHeaderMap['tipo']] ?? row[aHeaderMap['type']] ?? 'debit';
+          const saldoRaw = row[aHeaderMap['saldoinicial']] ?? row[aHeaderMap['saldo inicial']] ?? row[aHeaderMap['initial_balance']] ?? row[aHeaderMap['saldo']] ?? 0;
+          const initialBal = parseFloat(saldoRaw) || 0;
+
+          const diaCorteRaw = row[aHeaderMap['diacorte']] ?? row[aHeaderMap['dia corte']] ?? row[aHeaderMap['closing_day']];
+          const closingDay = diaCorteRaw ? parseInt(String(diaCorteRaw), 10) || null : null;
+
+          const diaPagoRaw = row[aHeaderMap['diapago']] ?? row[aHeaderMap['dia pago']] ?? row[aHeaderMap['due_day']];
+          const dueDay = diaPagoRaw ? parseInt(String(diaPagoRaw), 10) || null : null;
+
+          const limiteRaw = row[aHeaderMap['limitecredito']] ?? row[aHeaderMap['limite']] ?? row[aHeaderMap['credit_limit']];
+          const creditLimit = limiteRaw ? parseFloat(String(limiteRaw)) || null : null;
+
+          const network = row[aHeaderMap['red']] ?? row[aHeaderMap['network']] ?? null;
+
+          const accType = tipoRaw === 'credit_card' ? 'credit_card' : 'debit';
+          const cleanName = String(accName).trim();
+          const accountMatch = accounts.find(a => a.name.trim().toLowerCase() === cleanName.toLowerCase());
+          if (accountMatch) {
+            await query(
+              'UPDATE accounts SET initial_balance = $1, type = $2, closing_day = $3, due_day = $4, credit_limit = $5, network = $6 WHERE id = $7 AND user_id = $8',
+              [initialBal, accType, closingDay, dueDay, creditLimit, network, accountMatch.id, userId]
+            );
+            accountMatch.initial_balance = initialBal;
+            accountMatch.type = accType;
+            accountMatch.closing_day = closingDay;
+            accountMatch.due_day = dueDay;
+            accountMatch.credit_limit = creditLimit;
+            accountMatch.network = network;
+          } else {
+            const newAccRes = await query(
+              'INSERT INTO accounts (user_id, name_encrypted, type, initial_balance, closing_day, due_day, credit_limit, network) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
+              [userId, encrypt(cleanName), accType, initialBal, closingDay, dueDay, creditLimit, network]
+            );
+            const newId = newAccRes.rows[0].id;
+            accounts.push({ id: newId, name: cleanName, type: accType, initial_balance: initialBal, closing_day: closingDay, due_day: dueDay, credit_limit: creditLimit, network });
+          }
+        }
+      }
+    }
 
     // Fetch existing categories
     const catRes = await query('SELECT id, name, parent_id FROM categories WHERE user_id = $1', [userId]);
@@ -65,7 +132,7 @@ export const importTransactions = async (req: Request, res: Response) => {
       const rawDate = row[headerMap['Fecha']];
       const desc = row[headerMap['Descripción']] || '';
       const val = parseFloat(row[headerMap['Valor']]) || 0;
-      const cuentaName = row[headerMap['Cuenta']] || 'Default';
+      const cuentaName = String(row[headerMap['Cuenta']] || 'Default').trim();
       const situacion = row[headerMap['Situación']] || '';
       const catName = row[headerMap['Categoria']] || 'General';
       const subCatName = row[headerMap['Subcategoria']];
@@ -87,17 +154,12 @@ export const importTransactions = async (req: Request, res: Response) => {
       // Match or Create Account
       let accountId = null;
       let accType = 'debit';
-      let accountMatch = accounts.find(a => a.name.toLowerCase() === cuentaName.toLowerCase());
+      let accountMatch = accounts.find(a => a.name.trim().toLowerCase() === cuentaName.toLowerCase());
       if (accountMatch) {
         accountId = accountMatch.id;
         accType = accountMatch.type;
       } else {
-        // Use explicit TipoCuenta column if present, else heuristic on name
-        if (tipoCuentaCol === 'credit_card' || tipoCuentaCol === 'debit') {
-          accType = tipoCuentaCol;
-        } else {
-          accType = cuentaName.toLowerCase().includes('tarjeta') || cuentaName.toLowerCase().includes('visa') || cuentaName.toLowerCase().includes('mastercard') || cuentaName.toLowerCase().includes('amex') ? 'credit_card' : 'debit';
-        }
+        accType = tipoCuentaCol === 'credit_card' ? 'credit_card' : 'debit';
         const newAccRes = await query(
           'INSERT INTO accounts (user_id, name_encrypted, type) VALUES ($1, $2, $3) RETURNING id',
           [userId, encrypt(cuentaName), accType]
@@ -143,12 +205,19 @@ export const importTransactions = async (req: Request, res: Response) => {
         }
       }
 
+      // If credit card transaction, calculate invoice cycle and get/create invoice
+      let invoiceId: string | null = null;
+      if (accType === 'credit_card' && accountId) {
+        const period = computeInvoicePeriod(dateStr, accountMatch?.closing_day ?? null);
+        invoiceId = await getOrCreateInvoice(accountId, period.month, period.year, paid ? 'paid' : 'open');
+      }
+
       // Insert transaction
       await query(
         `INSERT INTO transactions 
-         (account_id, amount, category_id, date, description_encrypted, tags_encrypted, type, paid) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [accountId, amount, categoryId, dateStr, desc ? encrypt(desc) : null, tags ? encrypt(tags) : null, type, paid]
+         (account_id, amount, category_id, date, description_encrypted, tags_encrypted, type, paid, invoice_id) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+        [accountId, amount, categoryId, dateStr, desc ? encrypt(desc) : null, tags ? encrypt(tags) : null, type, paid, invoiceId]
       );
       
       imported++;
@@ -182,21 +251,22 @@ export const importTransactions = async (req: Request, res: Response) => {
           
           // Helper to get or create account — respects explicit type column
           const getOrCreateAccount = async (name: string, typeHint: string) => {
-            let accountMatch = accounts.find(a => a.name.toLowerCase() === name.toLowerCase());
+            const cleanName = String(name || '').trim();
+            let accountMatch = accounts.find(a => a.name.trim().toLowerCase() === cleanName.toLowerCase());
             if (accountMatch) return accountMatch.id;
             
             let type: string;
             if (typeHint === 'credit_card') {
               type = 'credit_card';
             } else {
-              type = name.toLowerCase().includes('tarjeta') || name.toLowerCase().includes('visa') || name.toLowerCase().includes('mastercard') || name.toLowerCase().includes('amex') ? 'credit_card' : 'debit';
+              type = 'debit';
             }
             const newAccRes = await query(
               'INSERT INTO accounts (user_id, name_encrypted, type) VALUES ($1, $2, $3) RETURNING id',
-              [userId, encrypt(name), type]
+              [userId, encrypt(cleanName), type]
             );
             const id = newAccRes.rows[0].id;
-            accounts.push({ id, name, type });
+            accounts.push({ id, name: cleanName, type });
             return id;
           };
           

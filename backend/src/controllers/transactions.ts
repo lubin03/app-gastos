@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { query } from '../db';
 import { encrypt, decrypt } from '../utils/crypto';
+import { computeInvoicePeriod, getOrCreateInvoice } from '../utils/billingCycle';
 
 export const getTransactions = async (req: Request, res: Response) => {
   try {
@@ -60,11 +61,11 @@ export const createTransaction = async (req: Request, res: Response) => {
     const account_id = req.body.account_id || req.body.accountId;
 
     // Validate account belongs to user
-    const accResult = await query('SELECT id, type FROM accounts WHERE id = $1 AND user_id = $2', [account_id, userId]);
+    const accResult = await query('SELECT id, type, closing_day FROM accounts WHERE id = $1 AND user_id = $2', [account_id, userId]);
     if (accResult.rowCount === 0) {
       return res.status(403).json({ error: 'Invalid account' });
     }
-    const accountType = accResult.rows[0].type;
+    const { type: accountType, closing_day: closingDay } = accResult.rows[0];
 
     const descEncrypted = description ? encrypt(description) : null;
 
@@ -87,11 +88,17 @@ export const createTransaction = async (req: Request, res: Response) => {
       const instDesc = installmentTotal > 1 ? `${description || ''} (${i+1}/${installmentTotal})` : description;
       const descEncrypted = instDesc ? encrypt(instDesc) : null;
 
+      let invoiceId: string | null = null;
+      if (accountType === 'credit_card') {
+        const period = computeInvoicePeriod(instDate, closingDay);
+        invoiceId = await getOrCreateInvoice(account_id, period.month, period.year, finalPaid ? 'paid' : 'open');
+      }
+
       const result = await query(
         `INSERT INTO transactions 
-         (account_id, amount, category_id, date, description_encrypted, type, paid, destination_account_id, installment_current, installment_total, parent_transaction_id) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-        [account_id, installmentAmount, category_id, instDate, descEncrypted, type, finalPaid, destination_account_id || null, i + 1, installmentTotal, parentId]
+         (account_id, amount, category_id, date, description_encrypted, type, paid, destination_account_id, installment_current, installment_total, parent_transaction_id, invoice_id) 
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+        [account_id, installmentAmount, category_id, instDate, descEncrypted, type, finalPaid, destination_account_id || null, i + 1, installmentTotal, parentId, invoiceId]
       );
 
       const row = result.rows[0];

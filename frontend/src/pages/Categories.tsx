@@ -52,20 +52,20 @@ const Categories: React.FC = () => {
           <IonList style={{ background: 'transparent', paddingBottom: '80px' }}>
             {parentCategories.map(parent => (
               <React.Fragment key={parent.id}>
-                <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '20px', marginBottom: '8px', paddingLeft: '8px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ion-color-medium, #94a3b8)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '20px', marginBottom: '8px', paddingLeft: '8px' }}>
                   {parent.name} ({t(`categories.${parent.type}`)})
                 </h3>
                 {categories.filter(c => c.parent_id === parent.id).map(child => (
                   <IonItem key={child.id} className="glass-item" lines="none">
                     <IonLabel className="ion-padding-start">
-                      <h2 style={{ fontWeight: 600, color: '#fff' }}>- {child.name}</h2>
+                      <h2 style={{ fontWeight: 600, color: 'var(--ion-text-color)' }}>- {child.name}</h2>
                       <p style={{ color: child.type === 'income' ? '#10b981' : '#f43f5e', textTransform: 'uppercase', fontSize: '10px', fontWeight: 600 }}>{t(`categories.${child.type}`)}</p>
                     </IonLabel>
                   </IonItem>
                 ))}
               </React.Fragment>
             ))}
-            {categories.length === 0 && <div className="ion-padding ion-text-center" style={{ color: '#94a3b8' }}>{t('common.noTransactions')}</div>}
+            {categories.length === 0 && <div className="ion-padding ion-text-center" style={{ color: 'var(--ion-color-medium, #94a3b8)' }}>{t('common.noTransactions')}</div>}
           </IonList>
         )}
 

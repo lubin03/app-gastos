@@ -5,26 +5,46 @@ import { encrypt, decrypt } from '../utils/crypto';
 export const getAccounts = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
+    const { endDate } = req.query;
+
+    const queryParams: any[] = [userId];
+    let dateFilter = '';
+    let ccDateFilter = '';
+
+    if (endDate) {
+      queryParams.push(endDate);
+      dateFilter = ` AND t.date < $2::date + interval '1 day'`;
+      ccDateFilter = ` AND t.date < $2::date + interval '1 day'`;
+    }
+
     const result = await query(`
       SELECT a.*, b.name as institution_name, b.code as institution_code, b.logo_url as institution_logo, b.primary_color as institution_color,
-      COALESCE(
-        (SELECT SUM(
-          CASE 
-            WHEN t.type = 'income' THEN t.amount 
-            WHEN t.type = 'expense' THEN -t.amount 
-            WHEN t.type = 'transfer' AND t.account_id = a.id THEN -t.amount
-            WHEN t.type = 'transfer' AND t.destination_account_id = a.id THEN t.amount
-            ELSE 0 
-          END
-        ) FROM transactions t 
-          WHERE (t.account_id = a.id OR t.destination_account_id = a.id)
-        ), 0
-      ) as balance
+      CASE 
+        WHEN a.type = 'credit_card' THEN
+          -(COALESCE(
+            (SELECT SUM(t.amount) FROM transactions t WHERE t.account_id = a.id AND t.paid = FALSE AND t.type = 'expense'${ccDateFilter}),
+            0
+          ))
+        ELSE
+          (COALESCE(
+            (SELECT SUM(
+              CASE 
+                WHEN t.type = 'income' THEN t.amount 
+                WHEN t.type = 'expense' THEN -t.amount 
+                WHEN t.type = 'transfer' AND t.account_id = a.id THEN -t.amount
+                WHEN t.type = 'transfer' AND t.destination_account_id = a.id THEN t.amount
+                ELSE 0 
+              END
+            ) FROM transactions t 
+              WHERE (t.account_id = a.id OR t.destination_account_id = a.id)${dateFilter}
+            ), 0
+          ) + COALESCE(a.initial_balance, 0))
+      END as balance
       FROM accounts a
       LEFT JOIN banking_institutions b ON a.institution_id = b.id
       WHERE a.user_id = $1 
       ORDER BY a.created_at ASC
-    `, [userId]);
+    `, queryParams);
     
     const accounts = result.rows.map(row => ({
       id: row.id,
@@ -44,6 +64,7 @@ export const getAccounts = async (req: Request, res: Response) => {
       due_day: row.due_day,
       network: row.network,
       is_archived: row.is_archived,
+      initial_balance: Number(row.initial_balance || 0),
       created_at: row.created_at,
       balance: Number(row.balance)
     }));
@@ -58,16 +79,17 @@ export const getAccounts = async (req: Request, res: Response) => {
 export const createAccount = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const { name, icon, institution_id, type, credit_limit, closing_day, due_day, network } = req.body;
+    const { name, icon, institution_id, type, credit_limit, closing_day, due_day, network, initial_balance } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Account name is required' });
     }
 
     const nameEncrypted = encrypt(name);
+    const parsedInitialBalance = initial_balance !== undefined && initial_balance !== null ? (parseFloat(initial_balance) || 0) : 0;
     const result = await query(
-      'INSERT INTO accounts (user_id, name_encrypted, icon, institution_id, type, credit_limit, closing_day, due_day, network) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *',
-      [userId, nameEncrypted, icon || null, institution_id || null, type || 'debit', credit_limit || null, closing_day || null, due_day || null, network || null]
+      'INSERT INTO accounts (user_id, name_encrypted, icon, institution_id, type, credit_limit, closing_day, due_day, network, initial_balance) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
+      [userId, nameEncrypted, icon || null, institution_id || null, type || 'debit', credit_limit || null, closing_day || null, due_day || null, network || null, parsedInitialBalance]
     );
 
     const row = result.rows[0];
@@ -80,6 +102,7 @@ export const createAccount = async (req: Request, res: Response) => {
       closing_day: row.closing_day,
       due_day: row.due_day,
       network: row.network,
+      initial_balance: Number(row.initial_balance || 0),
       created_at: row.created_at
     });
   } catch (error) {
@@ -92,16 +115,17 @@ export const updateAccount = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const { id } = req.params;
-    const { name, icon, institution_id, type, credit_limit, closing_day, due_day, network } = req.body;
+    const { name, icon, institution_id, type, credit_limit, closing_day, due_day, network, initial_balance } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Account name is required' });
     }
 
     const nameEncrypted = encrypt(name);
+    const parsedInitialBalance = initial_balance !== undefined && initial_balance !== null ? (parseFloat(initial_balance) || 0) : 0;
     const result = await query(
-      'UPDATE accounts SET name_encrypted = $1, icon = $2, institution_id = $3, type = $4, credit_limit = $5, closing_day = $6, due_day = $7, network = $8 WHERE id = $9 AND user_id = $10 RETURNING *',
-      [nameEncrypted, icon || null, institution_id || null, type || 'debit', credit_limit || null, closing_day || null, due_day || null, network || null, id, userId]
+      'UPDATE accounts SET name_encrypted = $1, icon = $2, institution_id = $3, type = $4, credit_limit = $5, closing_day = $6, due_day = $7, network = $8, initial_balance = $9 WHERE id = $10 AND user_id = $11 RETURNING *',
+      [nameEncrypted, icon || null, institution_id || null, type || 'debit', credit_limit || null, closing_day || null, due_day || null, network || null, parsedInitialBalance, id, userId]
     );
 
     if (result.rowCount === 0) {
@@ -118,6 +142,7 @@ export const updateAccount = async (req: Request, res: Response) => {
       closing_day: row.closing_day,
       due_day: row.due_day,
       network: row.network,
+      initial_balance: Number(row.initial_balance || 0),
       created_at: row.created_at
     });
   } catch (error) {
@@ -175,6 +200,13 @@ export const payCreditCard = async (req: Request, res: Response) => {
       UPDATE transactions 
       SET paid = TRUE 
       WHERE account_id = $1 AND paid = FALSE AND type = 'expense'
+    `, [id]);
+
+    // Update invoices status to paid
+    await query(`
+      UPDATE credit_card_invoices 
+      SET status = 'paid'
+      WHERE account_id = $1 AND status != 'paid'
     `, [id]);
 
     // 2. Create the payment expense on the funding account

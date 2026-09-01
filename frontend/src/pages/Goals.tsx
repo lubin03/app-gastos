@@ -111,12 +111,12 @@ const Goals: React.FC = () => {
                   <IonIcon icon={flagOutline} slot="start" color="primary" />
                   <IonLabel style={{ padding: '8px 0' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h2 style={{ fontWeight: 600, fontSize: '16px', color: '#fff', margin: 0 }}>{goal.name}</h2>
-                      <IonButton fill="clear" onClick={(e) => openEditModal(goal, e)} color="primary" size="small" style={{ margin: 0 }}>
-                        <IonIcon icon={createOutline} />
+                      <h2 style={{ fontWeight: 600, fontSize: '16px', color: 'var(--ion-text-color)', margin: 0 }}>{goal.name}</h2>
+                      <IonButton fill="clear" onClick={(e) => { e.stopPropagation(); openEditModal(goal, e); }} color="primary" style={{ minWidth: '40px', minHeight: '40px', margin: 0 }} title="Editar meta">
+                        <IonIcon icon={createOutline} style={{ fontSize: '18px' }} />
                       </IonButton>
                     </div>
-                    <p style={{ fontSize: '14px', color: '#94a3b8', marginTop: '4px', marginBottom: '8px' }}>
+                    <p style={{ fontSize: '14px', color: 'var(--ion-color-medium, #94a3b8)', marginTop: '4px', marginBottom: '8px' }}>
                       ${goal.current_amount.toFixed(2)} / ${goal.target_amount.toFixed(2)}
                       {goal.deadline && <span style={{ marginLeft: '8px' }}>| Límite: {new Date(goal.deadline).toLocaleDateString()}</span>}
                     </p>

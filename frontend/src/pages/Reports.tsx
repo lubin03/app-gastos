@@ -113,14 +113,14 @@ const Reports: React.FC = () => {
                                 <stop offset="95%" stopColor="#f43f5e" stopOpacity={0}/>
                               </linearGradient>
                             </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
-                            <XAxis dataKey="displayDate" axisLine={false} tickLine={false} style={{ fontSize: '12px' }} />
-                            <YAxis axisLine={false} tickLine={false} style={{ fontSize: '12px' }} tickFormatter={(val) => `$${val}`} />
+                            <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} stroke="var(--ion-color-medium)" />
+                            <XAxis dataKey="displayDate" axisLine={false} tickLine={false} stroke="var(--ion-color-medium)" tick={{ fill: 'var(--ion-color-medium)' }} style={{ fontSize: '12px' }} />
+                            <YAxis axisLine={false} tickLine={false} stroke="var(--ion-color-medium)" tick={{ fill: 'var(--ion-color-medium)' }} style={{ fontSize: '12px' }} tickFormatter={(val) => `$${val}`} />
                             <Tooltip 
                               formatter={(value: any) => `$${Number(value).toLocaleString()}`}
                               labelFormatter={(label) => `Día ${label}`}
                             />
-                            <Legend />
+                            <Legend wrapperStyle={{ color: 'var(--ion-text-color)' }} />
                             <Area type="monotone" dataKey="income" name="Ingresos" stroke="#10b981" fillOpacity={1} fill="url(#colorIncome)" />
                             <Area type="monotone" dataKey="expense" name="Gastos" stroke="#f43f5e" fillOpacity={1} fill="url(#colorExpense)" />
                           </AreaChart>
@@ -176,10 +176,10 @@ const Reports: React.FC = () => {
                         <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                           <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} />
-                            <XAxis dataKey="displayMonth" axisLine={false} tickLine={false} style={{ fontSize: '11px' }} />
-                            <YAxis axisLine={false} tickLine={false} style={{ fontSize: '11px' }} tickFormatter={(val) => `$${val}`} />
+                            <XAxis dataKey="displayMonth" axisLine={false} tickLine={false} stroke="var(--ion-color-medium)" tick={{ fill: 'var(--ion-color-medium)' }} style={{ fontSize: '11px' }} />
+                            <YAxis axisLine={false} tickLine={false} stroke="var(--ion-color-medium)" tick={{ fill: 'var(--ion-color-medium)' }} style={{ fontSize: '11px' }} tickFormatter={(val) => `$${val}`} />
                             <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
-                            <Legend />
+                            <Legend wrapperStyle={{ color: 'var(--ion-text-color)' }} />
                             <Bar dataKey="income" name="Ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="expense" name="Gastos" fill="#f43f5e" radius={[4, 4, 0, 0]} />
                           </BarChart>

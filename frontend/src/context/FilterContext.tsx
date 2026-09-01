@@ -12,6 +12,12 @@ const FilterContext = createContext<FilterContextType | undefined>(undefined);
 
 export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const getInitialDates = () => {
+    const savedStart = localStorage.getItem('app_filter_startDate');
+    const savedEnd = localStorage.getItem('app_filter_endDate');
+    if (savedStart && savedEnd) {
+      return { startDate: savedStart, endDate: savedEnd };
+    }
+
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth(), 1);
     const end = new Date(now.getFullYear(), now.getMonth() + 1, 0); // last day of month
@@ -48,6 +54,8 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const setDateRange = (start: string, end: string) => {
     setStartDate(start);
     setEndDate(end);
+    localStorage.setItem('app_filter_startDate', start);
+    localStorage.setItem('app_filter_endDate', end);
   };
 
   return (

@@ -56,7 +56,7 @@ const TransactionList: React.FC<Props> = ({ transactions, onEdit }) => {
     <>
       {Object.entries(groupedTransactions).map(([date, data]: any) => (
         <div key={date}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '20px 16px 10px 16px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', margin: '20px 16px 10px 16px', borderBottom: '1px solid var(--ion-color-step-150, rgba(255,255,255,0.1))', paddingBottom: '4px' }}>
             <IonText color="medium" style={{ fontSize: '12px', fontWeight: 600, textTransform: 'capitalize' }}>{date}</IonText>
             <IonText color={data.total < 0 ? 'danger' : 'success'} style={{ fontSize: '12px', fontWeight: 600 }}>
               {data.total < 0 ? '' : '+'}${data.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -69,10 +69,10 @@ const TransactionList: React.FC<Props> = ({ transactions, onEdit }) => {
                   <IonIcon icon={getIcon(tx.type)} />
                 </div>
                 <IonLabel>
-                  <h2 style={{ fontWeight: 600, fontSize: '16px', color: '#fff', marginBottom: '4px' }}>
+                  <h2 style={{ fontWeight: 600, fontSize: '16px', color: 'var(--ion-text-color)', marginBottom: '4px' }}>
                     {tx.description || tx.category}
                   </h2>
-                  <p style={{ fontSize: '12px', color: '#94a3b8' }}>
+                  <p style={{ fontSize: '12px', color: 'var(--ion-color-medium, #94a3b8)' }}>
                     {tx.type === 'transfer' ? (
                       `${tx.accountName || 'Cuenta'} ➔ ${tx.destinationAccountName || 'Destino'}`
                     ) : (

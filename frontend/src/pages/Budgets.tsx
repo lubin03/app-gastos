@@ -63,13 +63,13 @@ const Budgets: React.FC = () => {
               return (
                 <IonItem key={b.id} className="glass-item" lines="none">
                   <IonLabel>
-                    <h2 style={{ fontWeight: 600, color: '#fff' }}>{cat ? cat.name : 'Unknown'}</h2>
-                    <p style={{ color: '#94a3b8' }}>Limit: <span style={{ color: '#fff', fontWeight: 500 }}>${b.limit_amount}</span></p>
+                    <h2 style={{ fontWeight: 600, color: 'var(--ion-text-color)' }}>{cat ? cat.name : 'Unknown'}</h2>
+                    <p style={{ color: 'var(--ion-color-medium, #94a3b8)' }}>Limit: <span style={{ color: 'var(--ion-text-color)', fontWeight: 500 }}>${b.limit_amount}</span></p>
                   </IonLabel>
                 </IonItem>
               );
             })}
-            {budgets.length === 0 && <div className="ion-padding ion-text-center" style={{ color: '#94a3b8' }}>{t('common.noTransactions')}</div>}
+            {budgets.length === 0 && <div className="ion-padding ion-text-center" style={{ color: 'var(--ion-color-medium, #94a3b8)' }}>{t('common.noTransactions')}</div>}
           </IonList>
         )}
 

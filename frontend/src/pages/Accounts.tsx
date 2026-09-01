@@ -5,6 +5,8 @@ import { add, wallet, card, cash, home, car, cart, restaurant, airplane, medkit,
 import { api } from '../services/api';
 import { BankLogo } from 'paybrand';
 import Header from '../components/Header';
+import DateFilter from '../components/DateFilter';
+import { useFilter } from '../context/FilterContext';
 import { useTranslation } from 'react-i18next';
 import { institutionService, Institution } from '../services/institutionService';
 
@@ -32,6 +34,7 @@ const renderIcon = (acc: any) => {
 };
 
 const Accounts: React.FC = () => {
+  const { endDate } = useFilter();
   const [accounts, setAccounts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
@@ -47,6 +50,7 @@ const Accounts: React.FC = () => {
   const [selectedInstitutionId, setSelectedInstitutionId] = useState<string | null>(null);
   const [searchBank, setSearchBank] = useState('');
   const [accountType, setAccountType] = useState('debit');
+  const [initialBalance, setInitialBalance] = useState('');
   const [creditLimit, setCreditLimit] = useState('');
   const [closingDay, setClosingDay] = useState('');
   const [dueDay, setDueDay] = useState('');
@@ -61,8 +65,9 @@ const Accounts: React.FC = () => {
 
   const loadData = async () => {
     try {
+      const accUrl = endDate ? `/accounts?endDate=${endDate}` : '/accounts';
       const [accData, catData, instData] = await Promise.all([
-        api.get('/accounts'),
+        api.get(accUrl),
         api.get('/categories'),
         institutionService.getInstitutions()
       ]);
@@ -80,6 +85,10 @@ const Accounts: React.FC = () => {
     loadData();
   });
 
+  React.useEffect(() => {
+    loadData();
+  }, [endDate]);
+
   const openEditModal = (acc: any, e: React.MouseEvent) => {
     e.stopPropagation();
     setEditingAccount(acc);
@@ -87,6 +96,7 @@ const Accounts: React.FC = () => {
     setSelectedInstitutionId(acc.institution_id);
     setSelectedIcon(acc.icon || 'wallet');
     setAccountType(acc.type);
+    setInitialBalance(acc.initial_balance !== undefined && acc.initial_balance !== null ? String(acc.initial_balance) : '0');
     setCreditLimit(acc.credit_limit || '');
     setClosingDay(acc.closing_day || '');
     setDueDay(acc.due_day || '');
@@ -102,6 +112,7 @@ const Accounts: React.FC = () => {
         icon: selectedInstitutionId ? null : selectedIcon,
         institution_id: selectedInstitutionId,
         type: accountType,
+        initial_balance: parseFloat(initialBalance) || 0,
         credit_limit: accountType === 'credit_card' ? parseFloat(creditLimit) : null,
         closing_day: accountType === 'credit_card' ? parseInt(closingDay) : null,
         due_day: accountType === 'credit_card' ? parseInt(dueDay) : null,
@@ -118,6 +129,7 @@ const Accounts: React.FC = () => {
       setSelectedIcon('wallet');
       setSelectedInstitutionId(null);
       setAccountType('debit');
+      setInitialBalance('');
       setCreditLimit('');
       setClosingDay('');
       setDueDay('');
@@ -160,6 +172,7 @@ const Accounts: React.FC = () => {
   return (
     <IonPage>
       <Header title={t('accounts.title')} />
+      <DateFilter />
       <IonContent className="ion-padding-horizontal">
         {loading ? <IonSpinner className="ion-margin ion-text-center" color="primary" /> : (
           <IonList style={{ background: 'transparent', paddingBottom: '80px' }}>
@@ -172,15 +185,22 @@ const Accounts: React.FC = () => {
                   <IonItem key={acc.id} button className="glass-item" lines="none" onClick={() => history.push(`/app/transactions?accountId=${acc.id}`)}>
                     {renderIcon(acc)}
                     <IonLabel>
-                      <h2 style={{ fontWeight: 600, fontSize: '16px', color: '#fff' }}>
-                        {acc.name} {acc.is_archived && <span style={{fontSize: '10px', background: '#333', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px'}}>ARCHIVADA</span>}
+                      <h2 style={{ fontWeight: 600, fontSize: '16px', color: 'var(--ion-text-color)' }}>
+                        {acc.name} {acc.is_archived && <span style={{fontSize: '10px', background: '#333', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px'}}>ARCHIVADA</span>}
                       </h2>
                       <p style={{ fontSize: '14px', color: Number(acc.balance || 0) < 0 ? '#ef4444' : '#10b981', fontWeight: 600, marginTop: '4px' }}>
                         {Number(acc.balance || 0) < 0 ? '-' : ''}${Math.abs(Number(acc.balance || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                     </IonLabel>
-                    <IonButton slot="end" fill="clear" onClick={(e) => openEditModal(acc, e)} color="primary">
-                      <IonIcon icon={createOutline} />
+                    <IonButton 
+                      slot="end" 
+                      fill="clear" 
+                      onClick={(e) => { e.stopPropagation(); openEditModal(acc, e); }} 
+                      color="primary"
+                      style={{ minWidth: '44px', minHeight: '44px', margin: 0, zIndex: 5 }}
+                      title="Editar cuenta"
+                    >
+                      <IonIcon icon={createOutline} style={{ fontSize: '20px' }} />
                     </IonButton>
                   </IonItem>
                 ))}
@@ -189,30 +209,41 @@ const Accounts: React.FC = () => {
 
             {creditCards.length > 0 && (
               <>
-                <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '24px', marginBottom: '12px', paddingLeft: '8px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ion-color-medium, #94a3b8)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '24px', marginBottom: '12px', paddingLeft: '8px' }}>
                   {t('accounts.creditCard')}
                 </h3>
                 {creditCards.map(acc => (
                   <IonItem key={acc.id} button className="glass-item" lines="none" onClick={() => history.push(`/app/transactions?accountId=${acc.id}`)}>
                     {renderIcon(acc)}
                     <IonLabel>
-                      <h2 style={{ fontWeight: 600, fontSize: '16px', color: '#fff' }}>
-                        {acc.name} {acc.is_archived && <span style={{fontSize: '10px', background: '#333', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px'}}>ARCHIVADA</span>}
+                      <h2 style={{ fontWeight: 600, fontSize: '16px', color: 'var(--ion-text-color)' }}>
+                        {acc.name} {acc.is_archived && <span style={{fontSize: '10px', background: '#333', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px'}}>ARCHIVADA</span>}
                       </h2>
                       <p style={{ fontSize: '14px', color: Number(acc.balance || 0) < 0 ? '#ef4444' : '#10b981', fontWeight: 600, marginTop: '4px' }}>
                         {Number(acc.balance || 0) < 0 ? '-' : ''}${Math.abs(Number(acc.balance || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
-                      <p style={{ fontSize: '12px', color: '#94a3b8', marginTop: '4px' }}>
-                        Limit: <span style={{ color: '#fff' }}>${acc.credit_limit}</span> | Closing: <span style={{ color: '#fff' }}>{acc.closing_day}</span> | Due: <span style={{ color: '#fff' }}>{acc.due_day}</span>
-                        {acc.network && <span> | Network: <span style={{ color: '#fff' }}>{acc.network}</span></span>}
+                      <p style={{ fontSize: '12px', color: 'var(--ion-color-medium, #94a3b8)', marginTop: '4px' }}>
+                        Limit: <span style={{ color: 'var(--ion-text-color)', fontWeight: 500 }}>${acc.credit_limit || 0}</span> | Closing: <span style={{ color: 'var(--ion-text-color)', fontWeight: 500 }}>{acc.closing_day || '--'}</span> | Due: <span style={{ color: 'var(--ion-text-color)', fontWeight: 500 }}>{acc.due_day || '--'}</span>
+                        {acc.network && <span> | Red: <span style={{ color: 'var(--ion-text-color)', fontWeight: 500 }}>{acc.network}</span></span>}
                       </p>
                     </IonLabel>
-                    <IonButtons slot="end" style={{ flexDirection: 'column', height: '100%', padding: '8px 0' }}>
-                      <IonButton onClick={(e) => openEditModal(acc, e)} color="primary" fill="clear" size="small" style={{ margin: 0, height: '24px' }}>
-                        <IonIcon icon={createOutline} />
+                    <IonButtons slot="end" style={{ display: 'flex', alignItems: 'center', gap: '4px', zIndex: 5 }}>
+                      <IonButton 
+                        onClick={(e) => { e.stopPropagation(); openPayModal(acc.id); }} 
+                        color="primary" 
+                        size="small" 
+                        style={{ fontWeight: 'bold', height: '30px', textTransform: 'none', margin: 0 }}
+                      >
+                        Pagar
                       </IonButton>
-                      <IonButton onClick={(e) => { e.stopPropagation(); openPayModal(acc.id); }} color="primary" size="small" style={{ margin: '4px 0 0 0', fontWeight: 'bold' }}>
-                        PAY
+                      <IonButton 
+                        onClick={(e) => { e.stopPropagation(); openEditModal(acc, e); }} 
+                        color="primary" 
+                        fill="clear" 
+                        style={{ minWidth: '40px', minHeight: '40px', margin: 0 }}
+                        title="Editar tarjeta"
+                      >
+                        <IonIcon icon={createOutline} style={{ fontSize: '20px' }} />
                       </IonButton>
                     </IonButtons>
                   </IonItem>
@@ -231,6 +262,7 @@ const Accounts: React.FC = () => {
             setSelectedInstitutionId(null);
             setSearchBank('');
             setAccountType('debit');
+            setInitialBalance('0');
             setCreditLimit('');
             setClosingDay('');
             setDueDay('');
@@ -268,6 +300,13 @@ const Accounts: React.FC = () => {
               <IonLabel position="floating">{t('accounts.name')}</IonLabel>
               <IonInput value={newAccountName} onIonInput={e => setNewAccountName(e.detail.value!)} />
             </IonItem>
+
+            {accountType === 'debit' && (
+              <IonItem>
+                <IonLabel position="floating">Saldo Inicial ($)</IonLabel>
+                <IonInput type="number" value={initialBalance} onIonInput={e => setInitialBalance(e.detail.value!)} placeholder="0.00" />
+              </IonItem>
+            )}
 
             {accountType === 'credit_card' && (
               <>

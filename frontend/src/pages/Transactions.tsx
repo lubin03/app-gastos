@@ -145,61 +145,62 @@ const Transactions: React.FC = () => {
       <Header title={t('transactions.title')} />
       <DateFilter />
       <IonContent>
-        
-        <div style={{ padding: '0 16px 16px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          {filterAccountId ? (
-            <IonButton size="small" fill="clear" shape="round" onClick={() => history.push('/app/accounts')} style={{ color: 'var(--ion-color-primary)', fontWeight: 600 }}>
-              <IonIcon slot="start" icon={arrowBackOutline} />
-              {t('transactions.backToAccount')}
-            </IonButton>
-          ) : <div />}
-          
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <IonButton size="small" fill="outline" shape="round" onClick={handleExport} style={{ color: 'var(--ion-color-primary)', fontWeight: 600 }}>
-              <IonIcon slot="start" icon={downloadOutline} />
-              {t('transactions.export')}
-            </IonButton>
-            <input 
-              type="file" 
-              accept=".xlsx" 
-              style={{ display: 'none' }} 
-              ref={fileInputRef} 
-              onChange={handleImport} 
-            />
-            <IonButton size="small" shape="round" onClick={() => fileInputRef.current?.click()} disabled={isUploading} style={{ '--background': 'rgba(var(--ion-color-primary-rgb), 0.1)', color: 'var(--ion-color-primary)', fontWeight: 600, boxShadow: 'none' }} fill="clear">
-              {isUploading ? <IonSpinner name="dots" /> : <><IonIcon slot="start" icon={pushOutline} /> {t('transactions.import')}</>}
-            </IonButton>
+        <div className="app-container">
+          <div style={{ padding: '0 16px 16px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            {filterAccountId ? (
+              <IonButton size="small" fill="clear" shape="round" onClick={() => history.push('/app/accounts')} style={{ color: 'var(--ion-color-primary)', fontWeight: 600 }}>
+                <IonIcon slot="start" icon={arrowBackOutline} />
+                {t('transactions.backToAccount')}
+              </IonButton>
+            ) : <div />}
+            
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <IonButton size="small" fill="outline" shape="round" onClick={handleExport} style={{ color: 'var(--ion-color-primary)', fontWeight: 600 }}>
+                <IonIcon slot="start" icon={downloadOutline} />
+                {t('transactions.export')}
+              </IonButton>
+              <input 
+                type="file" 
+                accept=".xlsx" 
+                style={{ display: 'none' }} 
+                ref={fileInputRef} 
+                onChange={handleImport} 
+              />
+              <IonButton size="small" shape="round" onClick={() => fileInputRef.current?.click()} disabled={isUploading} style={{ '--background': 'rgba(var(--ion-color-primary-rgb), 0.1)', color: 'var(--ion-color-primary)', fontWeight: 600, boxShadow: 'none' }} fill="clear">
+                {isUploading ? <IonSpinner name="dots" /> : <><IonIcon slot="start" icon={pushOutline} /> {t('transactions.import')}</>}
+              </IonButton>
+            </div>
           </div>
-        </div>
 
-        <div className="ion-padding-horizontal">
-          <IonSegment value={tab} onIonChange={e => setTab(e.detail.value as string)} mode="ios" style={{ marginBottom: '16px' }}>
-            <IonSegmentButton value="all">
-              <IonLabel>Total</IonLabel>
-            </IonSegmentButton>
-            <IonSegmentButton value="pending">
-              <IonLabel>Pendientes</IonLabel>
-            </IonSegmentButton>
-            <IonSegmentButton value="paid">
-              <IonLabel>Pagos</IonLabel>
-            </IonSegmentButton>
-          </IonSegment>
-        </div>
+          <div className="ion-padding-horizontal">
+            <IonSegment value={tab} onIonChange={e => setTab(e.detail.value as string)} mode="ios" style={{ marginBottom: '16px' }}>
+              <IonSegmentButton value="all">
+                <IonLabel>Total</IonLabel>
+              </IonSegmentButton>
+              <IonSegmentButton value="pending">
+                <IonLabel>Pendientes</IonLabel>
+              </IonSegmentButton>
+              <IonSegmentButton value="paid">
+                <IonLabel>Pagos</IonLabel>
+              </IonSegmentButton>
+            </IonSegment>
+          </div>
 
-        <div style={{ paddingBottom: '140px' }}>
-          {loading ? <IonSpinner className="ion-margin" /> : (
-            <TransactionList 
-              transactions={transactions.filter(t => {
-                if (tab === 'pending') return t.paid === false;
-                if (tab === 'paid') return t.paid === true;
-                return true;
-              })} 
-              onEdit={(t) => {
-                setEditingTransaction(t);
-                setShowModal(true);
-              }} 
-            />
-          )}
+          <div style={{ paddingBottom: '140px' }}>
+            {loading ? <div className="ion-text-center ion-padding"><IonSpinner name="crescent" color="primary" /></div> : (
+              <TransactionList 
+                transactions={transactions.filter(t => {
+                  if (tab === 'pending') return t.paid === false;
+                  if (tab === 'paid') return t.paid === true;
+                  return true;
+                })} 
+                onEdit={(t) => {
+                  setEditingTransaction(t);
+                  setShowModal(true);
+                }} 
+              />
+            )}
+          </div>
         </div>
 
         <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '80px', marginRight: '8px' }}>

@@ -95,81 +95,81 @@ const Goals: React.FC = () => {
 
   return (
     <IonPage>
-      <Header title="Metas Financieras" />
-      <IonContent className="ion-padding-horizontal">
-        {loading ? <IonSpinner className="ion-margin ion-text-center" color="primary" /> : (
-          <IonList style={{ background: 'transparent', paddingBottom: '80px' }}>
-            {goals.length === 0 && (
-              <IonItem lines="none">
-                <IonLabel className="ion-text-center" color="medium">No tienes metas aún.</IonLabel>
-              </IonItem>
-            )}
-            {goals.map(goal => {
-              const progress = goal.target_amount > 0 ? Math.min(goal.current_amount / goal.target_amount, 1) : 0;
-              return (
-                <IonItem key={goal.id} className="glass-item" lines="none" style={{ marginBottom: '16px', borderRadius: '16px', '--padding-start': '16px' }}>
-                  <IonIcon icon={flagOutline} slot="start" color="primary" />
-                  <IonLabel style={{ padding: '8px 0' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h2 style={{ fontWeight: 600, fontSize: '16px', color: 'var(--ion-text-color)', margin: 0 }}>{goal.name}</h2>
-                      <IonButton fill="clear" onClick={(e) => { e.stopPropagation(); openEditModal(goal, e); }} color="primary" style={{ minWidth: '40px', minHeight: '40px', margin: 0 }} title="Editar meta">
-                        <IonIcon icon={createOutline} style={{ fontSize: '18px' }} />
-                      </IonButton>
-                    </div>
-                    <p style={{ fontSize: '14px', color: 'var(--ion-color-medium, #94a3b8)', marginTop: '4px', marginBottom: '8px' }}>
-                      ${goal.current_amount.toFixed(2)} / ${goal.target_amount.toFixed(2)}
-                      {goal.deadline && <span style={{ marginLeft: '8px' }}>| Límite: {new Date(goal.deadline).toLocaleDateString()}</span>}
-                    </p>
-                    <IonProgressBar value={progress} color={progress >= 1 ? "success" : "primary"} style={{ height: '8px', borderRadius: '4px' }} />
-                  </IonLabel>
+      <Header title="Metas Financieras" />      <IonContent className="ion-padding-horizontal">
+        <div className="app-container">
+          {loading ? <div className="ion-text-center ion-padding"><IonSpinner name="crescent" color="primary" /></div> : (
+            <IonList style={{ background: 'transparent', paddingBottom: '80px' }}>
+              {goals.length === 0 && (
+                <IonItem lines="none" className="glass-item">
+                  <IonLabel className="ion-text-center" color="medium">No tienes metas aún.</IonLabel>
                 </IonItem>
-              );
-            })}
-          </IonList>
-        )}
+              )}
+              {goals.map(goal => {
+                const progress = goal.target_amount > 0 ? Math.min(goal.current_amount / goal.target_amount, 1) : 0;
+                return (
+                  <IonItem key={goal.id} className="glass-item" lines="none" style={{ marginBottom: '16px' }}>
+                    <IonIcon icon={flagOutline} slot="start" color="primary" />
+                    <IonLabel style={{ padding: '8px 0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h2 style={{ fontWeight: 600, fontSize: '16px', color: 'var(--ion-text-color)', margin: 0 }}>{goal.name}</h2>
+                        <IonButton fill="clear" onClick={(e) => { e.stopPropagation(); openEditModal(goal, e); }} color="primary" style={{ minWidth: '40px', minHeight: '40px', margin: 0 }} title="Editar meta">
+                          <IonIcon icon={createOutline} style={{ fontSize: '18px' }} />
+                        </IonButton>
+                      </div>
+                      <p style={{ fontSize: '14px', color: 'var(--ion-color-medium, #94a3b8)', marginTop: '4px', marginBottom: '8px' }}>
+                        ${goal.current_amount.toFixed(2)} / ${goal.target_amount.toFixed(2)}
+                        {goal.deadline && <span style={{ marginLeft: '8px' }}>| Límite: {new Date(goal.deadline).toLocaleDateString()}</span>}
+                      </p>
+                      <IonProgressBar value={progress} color={progress >= 1 ? "success" : "primary"} style={{ height: '8px', borderRadius: '4px' }} />
+                    </IonLabel>
+                  </IonItem>
+                );
+              })}
+            </IonList>
+          )}
 
-        <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '16px', marginRight: '8px' }}>
-          <IonFabButton onClick={openCreateModal} style={{ '--background': 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
-            <IonIcon icon={add} />
-          </IonFabButton>
-        </IonFab>
+          <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '16px', marginRight: '8px' }}>
+            <IonFabButton onClick={openCreateModal} style={{ '--background': 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
+              <IonIcon icon={add} />
+            </IonFabButton>
+          </IonFab>
 
-        <IonModal isOpen={showModal} onDidDismiss={() => setShowModal(false)} className="glass-modal">
-          <IonHeader>
-            <IonToolbar>
-              <IonTitle>{editingGoal ? 'Editar Meta' : 'Nueva Meta'}</IonTitle>
-              <IonButton slot="end" fill="clear" onClick={() => setShowModal(false)}>{t('common.cancel')}</IonButton>
-            </IonToolbar>
-          </IonHeader>
-          <IonContent className="ion-padding">
-            <IonItem className="glass-input" lines="none">
-              <IonInput value={name} onIonInput={e => setName(e.detail.value!)} label="Nombre de la Meta" labelPlacement="floating" />
-            </IonItem>
-            
-            <IonItem className="glass-input" lines="none">
-              <IonInput type="number" value={targetAmount} onIonInput={e => setTargetAmount(e.detail.value!)} label="Monto Objetivo" labelPlacement="floating" />
-            </IonItem>
+          <IonModal isOpen={showModal} onDidDismiss={() => setShowModal(false)} className="glass-modal">
+            <IonHeader>
+              <IonToolbar>
+                <IonTitle>{editingGoal ? 'Editar Meta' : 'Nueva Meta'}</IonTitle>
+                <IonButton slot="end" fill="clear" onClick={() => setShowModal(false)}>{t('common.cancel')}</IonButton>
+              </IonToolbar>
+            </IonHeader>
+            <IonContent className="ion-padding">
+              <IonItem className="glass-input" lines="none">
+                <IonInput value={name} onIonInput={e => setName(e.detail.value!)} label="Nombre de la Meta" labelPlacement="floating" />
+              </IonItem>
+              
+              <IonItem className="glass-input" lines="none">
+                <IonInput type="number" value={targetAmount} onIonInput={e => setTargetAmount(e.detail.value!)} label="Monto Objetivo" labelPlacement="floating" />
+              </IonItem>
 
-            <IonItem className="glass-input" lines="none">
-              <IonInput type="number" value={currentAmount} onIonInput={e => setCurrentAmount(e.detail.value!)} label="Monto Ahorrado" labelPlacement="floating" />
-            </IonItem>
+              <IonItem className="glass-input" lines="none">
+                <IonInput type="number" value={currentAmount} onIonInput={e => setCurrentAmount(e.detail.value!)} label="Monto Ahorrado" labelPlacement="floating" />
+              </IonItem>
 
-            <IonItem className="glass-input" lines="none">
-              <IonInput type="date" value={deadline} onIonInput={e => setDeadline(e.detail.value!)} label="Fecha Límite" labelPlacement="floating" />
-            </IonItem>
+              <IonItem className="glass-input" lines="none">
+                <IonInput type="date" value={deadline} onIonInput={e => setDeadline(e.detail.value!)} label="Fecha Límite" labelPlacement="floating" />
+              </IonItem>
 
-            <IonButton expand="block" shape="round" className="ion-margin-top" style={{ height: '50px', '--background': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)', fontWeight: 600, fontSize: '16px' }} onClick={handleSave}>
-              {t('common.save')}
-            </IonButton>
-
-            {editingGoal && (
-              <IonButton expand="block" color="danger" fill="clear" className="ion-margin-top" onClick={handleDelete}>
-                Eliminar Meta
+              <IonButton expand="block" shape="round" className="ion-margin-top" style={{ height: '50px', '--background': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)', fontWeight: 600, fontSize: '16px', marginTop: '24px' }} onClick={handleSave}>
+                {t('common.save')}
               </IonButton>
-            )}
-          </IonContent>
-        </IonModal>
 
+              {editingGoal && (
+                <IonButton expand="block" color="danger" fill="clear" shape="round" className="ion-margin-top" onClick={handleDelete}>
+                  Eliminar Meta
+                </IonButton>
+              )}
+            </IonContent>
+          </IonModal>
+        </div>
       </IonContent>
     </IonPage>
   );

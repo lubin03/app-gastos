@@ -89,7 +89,7 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
   };
 
   return (
-    <IonModal isOpen={isOpen} onDidDismiss={onClose} initialBreakpoint={0.6} breakpoints={[0, 0.6, 0.85]}>
+    <IonModal isOpen={isOpen} onDidDismiss={onClose} className="glass-modal" initialBreakpoint={0.65} breakpoints={[0, 0.65, 0.9]}>
       <IonHeader className="ion-no-border">
         <IonToolbar style={{ '--background': 'transparent' }}>
           <IonTitle style={{ fontWeight: 700 }}>Magic Add ✨</IonTitle>
@@ -108,7 +108,7 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
             </Trans>
           </p>
           
-          <IonItem lines="none" style={{ '--background': 'rgba(var(--ion-color-primary-rgb), 0.05)', borderRadius: '12px', marginBottom: '16px' }}>
+          <IonItem lines="none" className="glass-input" style={{ marginBottom: '20px', borderRadius: '16px' }}>
             <IonTextarea
               placeholder={t('magicModal.placeholder')}
               value={text}
@@ -122,11 +122,12 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
           {text.trim() ? (
             <IonButton 
               expand="block" 
+              shape="round"
               onClick={handleSubmitText} 
               disabled={loading} 
-              style={{ '--border-radius': '12px', height: '50px', '--background': 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}
+              style={{ height: '52px', '--background': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)', fontWeight: 600, fontSize: '16px' }}
             >
-              {loading ? <IonSpinner name="dots" /> : (
+              {loading ? <IonSpinner name="dots" color="light" /> : (
                 <>
                   <IonIcon icon={colorWandOutline} slot="start" />
                   {t('magicModal.processing', 'Procesar Texto')}
@@ -136,19 +137,21 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
           ) : (
             <IonButton 
               expand="block" 
+              shape="round"
               onMouseDown={startRecording}
               onMouseUp={stopRecording}
               onTouchStart={startRecording}
               onTouchEnd={stopRecording}
               disabled={loading} 
               style={{ 
-                '--border-radius': '12px', 
                 height: '60px', 
-                '--background': isRecording ? 'var(--ion-color-danger)' : 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)',
-                transition: 'all 0.3s ease'
+                '--background': isRecording ? 'var(--ion-color-danger)' : 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                transition: 'all 0.3s ease',
+                fontWeight: 600,
+                fontSize: '16px'
               }}
             >
-              {loading ? <IonSpinner name="dots" /> : (
+              {loading ? <IonSpinner name="dots" color="light" /> : (
                 <>
                   <IonIcon icon={isRecording ? stopCircleOutline : micOutline} slot="start" style={{ fontSize: '24px' }} />
                   {isRecording ? 'Suelta para enviar...' : 'Mantén presionado para hablar'}

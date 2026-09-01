@@ -10,7 +10,7 @@ context: |
 
 testing:
   strict_tdd: false
-  runner: vitest (frontend) / no runner (backend)
+  runner: vitest (frontend & backend)
   layers:
     unit: true  # vitest
     integration: true  # @testing-library/react

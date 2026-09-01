@@ -84,89 +84,97 @@ const Profile: React.FC = () => {
     <IonPage>
       <Header title={t('profile.title')} />
       <IonContent className="ion-padding">
-        <div className="glass-card ion-padding ion-margin-bottom">
-          <h2 style={{ marginTop: 0, fontWeight: 700, fontSize: '1.2rem' }}>{t('profile.accountDetails')}</h2>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '20px' }}>
-            {t('profile.instruction')}
-          </p>
-
-          <IonItem className="glass-item ion-margin-bottom" lines="none">
-            <IonLabel position="stacked">{t('profile.email')}</IonLabel>
-            <IonInput 
-              type="email" 
-              value={email} 
-              onIonInput={e => setEmail(e.detail.value!)} 
-            />
-          </IonItem>
-
-          {!user?.isGoogle && (
-            <>
-              <IonItem className="glass-item ion-margin-bottom" lines="none">
-                <IonLabel position="stacked">{t('profile.currentPassword')}</IonLabel>
-                <IonInput 
-                  type="password" 
-                  value={currentPassword} 
-                  onIonInput={e => setCurrentPassword(e.detail.value!)} 
-                  placeholder={t('profile.currentPasswordPlaceholder')}
-                />
-              </IonItem>
-
-              <IonItem className="glass-item ion-margin-bottom" lines="none">
-                <IonLabel position="stacked">{t('profile.newPassword')}</IonLabel>
-                <IonInput 
-                  type="password" 
-                  value={newPassword} 
-                  onIonInput={e => setNewPassword(e.detail.value!)} 
-                  placeholder={t('profile.newPasswordPlaceholder')}
-                />
-              </IonItem>
-            </>
-          )}
-
-          {user?.isGoogle && (
-            <p style={{ color: '#ec4899', fontSize: '0.85rem', marginTop: '10px' }}>
-              {t('profile.googleWarning')}
+        <div className="app-container" style={{ maxWidth: '600px' }}>
+          <div className="glass-card ion-padding ion-margin-bottom">
+            <h2 style={{ marginTop: 0, fontWeight: 700, fontSize: '1.2rem' }}>{t('profile.accountDetails')}</h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '20px' }}>
+              {t('profile.instruction')}
             </p>
-          )}
 
-          <IonItem className="glass-item ion-margin-bottom" lines="none" style={{ marginTop: '20px' }}>
-            <IonLabel position="stacked">{t('profile.language')}</IonLabel>
-            <IonSelect 
-              value={i18n.language.split('-')[0]} 
-              onIonChange={e => i18n.changeLanguage(e.detail.value)}
+            <IonItem className="glass-input" lines="none">
+              <IonInput 
+                type="email" 
+                value={email} 
+                onIonInput={e => setEmail(e.detail.value!)} 
+                label={t('profile.email')}
+                labelPlacement="floating"
+              />
+            </IonItem>
+
+            {!user?.isGoogle && (
+              <>
+                <IonItem className="glass-input" lines="none">
+                  <IonInput 
+                    type="password" 
+                    value={currentPassword} 
+                    onIonInput={e => setCurrentPassword(e.detail.value!)} 
+                    label={t('profile.currentPassword')}
+                    labelPlacement="floating"
+                    placeholder={t('profile.currentPasswordPlaceholder')}
+                  />
+                </IonItem>
+
+                <IonItem className="glass-input" lines="none">
+                  <IonInput 
+                    type="password" 
+                    value={newPassword} 
+                    onIonInput={e => setNewPassword(e.detail.value!)} 
+                    label={t('profile.newPassword')}
+                    labelPlacement="floating"
+                    placeholder={t('profile.newPasswordPlaceholder')}
+                  />
+                </IonItem>
+              </>
+            )}
+
+            {user?.isGoogle && (
+              <p style={{ color: '#ec4899', fontSize: '0.85rem', marginTop: '10px' }}>
+                {t('profile.googleWarning')}
+              </p>
+            )}
+
+            <IonItem className="glass-input" lines="none">
+              <IonSelect 
+                value={i18n.language.split('-')[0]} 
+                onIonChange={e => i18n.changeLanguage(e.detail.value)}
+                label={t('profile.language')}
+                labelPlacement="floating"
+              >
+                <IonSelectOption value="en">{t('profile.english')}</IonSelectOption>
+                <IonSelectOption value="es">{t('profile.spanish')}</IonSelectOption>
+              </IonSelect>
+            </IonItem>
+
+            <IonButton 
+              expand="block" 
+              shape="round"
+              className="ion-margin-top" 
+              onClick={handleUpdate} 
+              disabled={loading}
+              style={{ height: '50px', '--background': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)', fontWeight: 600, fontSize: '16px' }}
             >
-              <IonSelectOption value="en">{t('profile.english')}</IonSelectOption>
-              <IonSelectOption value="es">{t('profile.spanish')}</IonSelectOption>
-            </IonSelect>
-          </IonItem>
+              {loading ? <IonSpinner name="crescent" color="light" /> : t('profile.save')}
+            </IonButton>
+          </div>
 
-          <IonButton 
-            expand="block" 
-            className="ion-margin-top" 
-            onClick={handleUpdate} 
-            disabled={loading}
-            style={{ '--border-radius': '12px', '--background': 'var(--ion-color-primary)' }}
-          >
-            {loading ? <IonSpinner name="crescent" /> : t('profile.save')}
-          </IonButton>
-        </div>
-
-        {/* Danger Zone */}
-        <div className="glass-card ion-padding ion-margin-bottom" style={{ border: '1px solid rgba(239, 68, 68, 0.3)' }}>
-          <h2 style={{ marginTop: 0, fontWeight: 700, fontSize: '1.2rem', color: 'var(--ion-color-danger)' }}>Zona de Peligro</h2>
-          <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '20px' }}>
-            Acciones destructivas para tu cuenta.
-          </p>
-          <IonButton 
-            expand="block" 
-            color="danger" 
-            fill="outline"
-            onClick={handleDeleteAllTransactions}
-            disabled={loading}
-            style={{ '--border-radius': '12px' }}
-          >
-            Borrar todos mis datos
-          </IonButton>
+          {/* Danger Zone */}
+          <div className="glass-card ion-padding ion-margin-bottom" style={{ border: '1px solid rgba(239, 68, 68, 0.3)' }}>
+            <h2 style={{ marginTop: 0, fontWeight: 700, fontSize: '1.2rem', color: 'var(--ion-color-danger)' }}>Zona de Peligro</h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '20px' }}>
+              Acciones destructivas para tu cuenta.
+            </p>
+            <IonButton 
+              expand="block" 
+              color="danger" 
+              fill="outline"
+              shape="round"
+              onClick={handleDeleteAllTransactions}
+              disabled={loading}
+              style={{ height: '44px', fontWeight: 600 }}
+            >
+              Borrar todos mis datos
+            </IonButton>
+          </div>
         </div>
 
         <IonToast

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { IonContent, IonPage, IonTitle, IonToolbar, IonList, IonItem, IonLabel, IonFab, IonFabButton, IonIcon, IonModal, IonButton, IonInput, IonSpinner, useIonViewWillEnter, IonGrid, IonRow, IonCol, IonSelect, IonSelectOption, IonButtons, IonHeader, IonSearchbar } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
-import { add, wallet, card, cash, home, car, cart, restaurant, airplane, medkit, school, gift, barbell, business, briefcase, laptop, phonePortrait, createOutline, checkmark } from 'ionicons/icons';
+import { add, wallet, card, cash, home, car, cart, restaurant, airplane, medkit, school, gift, barbell, business, briefcase, laptop, phonePortrait, createOutline, checkmark, archiveOutline, chevronDownOutline, chevronUpOutline } from 'ionicons/icons';
 import { api } from '../services/api';
 import { BankLogo } from 'paybrand';
 import Header from '../components/Header';
@@ -39,6 +39,7 @@ const Accounts: React.FC = () => {
   const [categories, setCategories] = useState<any[]>([]);
   const [institutions, setInstitutions] = useState<Institution[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showArchived, setShowArchived] = useState(false);
   const history = useHistory();
   const { t } = useTranslation();
 
@@ -166,8 +167,9 @@ const Accounts: React.FC = () => {
     }
   };
 
-  const bankAccounts = accounts.filter(a => a.type !== 'credit_card');
-  const creditCards = accounts.filter(a => a.type === 'credit_card');
+  const activeBankAccounts = accounts.filter(a => a.type !== 'credit_card' && !a.is_archived);
+  const archivedAccounts = accounts.filter(a => a.is_archived);
+  const creditCards = accounts.filter(a => a.type === 'credit_card' && !a.is_archived);
 
   return (
     <IonPage>
@@ -176,17 +178,17 @@ const Accounts: React.FC = () => {
       <IonContent className="ion-padding-horizontal">
         {loading ? <IonSpinner className="ion-margin ion-text-center" color="primary" /> : (
           <IonList style={{ background: 'transparent', paddingBottom: '80px' }}>
-            {bankAccounts.length > 0 && (
+            {activeBankAccounts.length > 0 && (
               <>
-                <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '20px', marginBottom: '12px', paddingLeft: '8px' }}>
+                <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ion-color-medium, #94a3b8)', textTransform: 'uppercase', letterSpacing: '1px', marginTop: '20px', marginBottom: '12px', paddingLeft: '8px' }}>
                   {t('accounts.bankCash')}
                 </h3>
-                {bankAccounts.map(acc => (
+                {activeBankAccounts.map(acc => (
                   <IonItem key={acc.id} button className="glass-item" lines="none" onClick={() => history.push(`/app/transactions?accountId=${acc.id}`)}>
                     {renderIcon(acc)}
                     <IonLabel>
                       <h2 style={{ fontWeight: 600, fontSize: '16px', color: 'var(--ion-text-color)' }}>
-                        {acc.name} {acc.is_archived && <span style={{fontSize: '10px', background: '#333', color: '#fff', padding: '2px 6px', borderRadius: '4px', marginLeft: '8px'}}>ARCHIVADA</span>}
+                        {acc.name}
                       </h2>
                       <p style={{ fontSize: '14px', color: Number(acc.balance || 0) < 0 ? '#ef4444' : '#10b981', fontWeight: 600, marginTop: '4px' }}>
                         {Number(acc.balance || 0) < 0 ? '-' : ''}${Math.abs(Number(acc.balance || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -249,6 +251,52 @@ const Accounts: React.FC = () => {
                   </IonItem>
                 ))}
               </>
+            )}
+
+            {/* Archived Accounts Collapsible Section */}
+            {archivedAccounts.length > 0 && (
+              <div style={{ marginTop: '28px', marginBottom: '20px' }}>
+                <div 
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', padding: '10px 14px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.06)' }}
+                  onClick={() => setShowArchived(!showArchived)}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <IonIcon icon={archiveOutline} style={{ color: 'var(--ion-color-medium)', fontSize: '18px' }} />
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--ion-color-medium)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                      Cuentas Archivadas ({archivedAccounts.length})
+                    </span>
+                  </div>
+                  <IonIcon icon={showArchived ? chevronUpOutline : chevronDownOutline} style={{ color: 'var(--ion-color-medium)', fontSize: '18px' }} />
+                </div>
+
+                {showArchived && (
+                  <div style={{ marginTop: '10px' }}>
+                    {archivedAccounts.map(acc => (
+                      <IonItem key={acc.id} button className="glass-item" lines="none" style={{ opacity: 0.75, marginBottom: '8px' }} onClick={() => history.push(`/app/transactions?accountId=${acc.id}`)}>
+                        {renderIcon(acc)}
+                        <IonLabel>
+                          <h2 style={{ fontWeight: 600, fontSize: '15px', color: 'var(--ion-text-color)' }}>
+                            {acc.name} <span style={{ fontSize: '9px', background: 'rgba(100,116,139,0.2)', color: 'var(--ion-color-medium)', padding: '2px 6px', borderRadius: '4px', marginLeft: '6px' }}>ARCHIVADA</span>
+                          </h2>
+                          <p style={{ fontSize: '13px', color: 'var(--ion-color-medium)', fontWeight: 600, marginTop: '4px' }}>
+                            ${Number(acc.balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </IonLabel>
+                        <IonButton 
+                          slot="end" 
+                          fill="clear" 
+                          onClick={(e) => { e.stopPropagation(); openEditModal(acc, e); }} 
+                          color="primary"
+                          style={{ minWidth: '40px', minHeight: '40px', margin: 0, zIndex: 5 }}
+                          title="Editar cuenta"
+                        >
+                          <IonIcon icon={createOutline} style={{ fontSize: '18px' }} />
+                        </IonButton>
+                      </IonItem>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             {accounts.length === 0 && <IonItem><IonLabel>{t('common.noTransactions')}</IonLabel></IonItem>}
           </IonList>
@@ -431,7 +479,7 @@ const Accounts: React.FC = () => {
             <IonItem>
               <IonLabel position="floating">{t('accounts.fundingAccount')}</IonLabel>
               <IonSelect value={payFundingAccountId} onIonChange={e => setPayFundingAccountId(e.detail.value)}>
-                {bankAccounts.map(acc => (
+                {activeBankAccounts.map((acc: any) => (
                   <IonSelectOption key={acc.id} value={acc.id}>{acc.name}</IonSelectOption>
                 ))}
               </IonSelect>

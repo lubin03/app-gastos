@@ -95,18 +95,19 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
     }
   };
 
+  const selectableAccounts = accounts.filter(acc => !acc.is_archived || acc.id === accountId || acc.id === destinationAccountId);
+
   return (
     <IonModal isOpen={isOpen} onDidDismiss={onClose} className="glass-modal">
       <IonHeader>
         <IonToolbar>
-          <IonTitle>{transaction ? t('transactions.editTransaction') : t('transactions.addTransaction')}</IonTitle>
+          <IonTitle>{transaction ? t('transactions.edit') : t('transactions.new')}</IonTitle>
           <IonButton slot="end" fill="clear" onClick={onClose}>{t('common.cancel')}</IonButton>
         </IonToolbar>
       </IonHeader>
       <IonContent className="ion-padding">
         <IonItem className="glass-input" lines="none">
-          <IonLabel>{t('transactions.type')}</IonLabel>
-          <IonSelect value={type} onIonChange={e => setType(e.detail.value)}>
+          <IonSelect value={type} onIonChange={e => setType(e.detail.value)} label={t('common.type')} labelPlacement="floating">
             <IonSelectOption value="expense">{t('transactions.expense')}</IonSelectOption>
             <IonSelectOption value="income">{t('transactions.income')}</IonSelectOption>
             <IonSelectOption value="transfer">{t('transactions.transfer')}</IonSelectOption>
@@ -114,16 +115,16 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
         </IonItem>
         <IonItem className="glass-input" lines="none">
           <IonSelect value={accountId} onIonChange={e => setAccountId(e.detail.value)} label={type === 'transfer' ? t('transactions.originAccount', 'Cuenta Origen') : t('transactions.account')} labelPlacement="floating">
-            {accounts.map(acc => (
-              <IonSelectOption key={acc.id} value={acc.id}>{acc.name}</IonSelectOption>
+            {selectableAccounts.map(acc => (
+              <IonSelectOption key={acc.id} value={acc.id}>{acc.name} {acc.is_archived ? '(Archivada)' : ''}</IonSelectOption>
             ))}
           </IonSelect>
         </IonItem>
         {type === 'transfer' && (
           <IonItem className="glass-input" lines="none">
             <IonSelect value={destinationAccountId} onIonChange={e => setDestinationAccountId(e.detail.value)} label={t('transactions.destinationAccount', 'Cuenta Destino')} labelPlacement="floating">
-              {accounts.map(acc => (
-                <IonSelectOption key={acc.id} value={acc.id}>{acc.name}</IonSelectOption>
+              {selectableAccounts.map(acc => (
+                <IonSelectOption key={acc.id} value={acc.id}>{acc.name} {acc.is_archived ? '(Archivada)' : ''}</IonSelectOption>
               ))}
             </IonSelect>
           </IonItem>

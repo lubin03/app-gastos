@@ -161,7 +161,7 @@ const Dashboard: React.FC = () => {
             </IonRow>
 
             {/* Accounts Balances Section for Selected Period */}
-            {dashboardAccounts.filter(a => a.type !== 'credit_card').length > 0 && (
+            {dashboardAccounts.filter(a => a.type !== 'credit_card' && !a.is_archived).length > 0 && (
               <IonRow className="ion-margin-top">
                 <IonCol size="12">
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -171,7 +171,7 @@ const Dashboard: React.FC = () => {
                     </IonButton>
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
-                    {dashboardAccounts.filter(a => a.type !== 'credit_card').slice(0, 6).map(acc => {
+                    {dashboardAccounts.filter(a => a.type !== 'credit_card' && !a.is_archived).slice(0, 6).map(acc => {
                       const bal = Number(acc.balance || 0);
                       const isNeg = bal < 0;
                       return (

@@ -93,13 +93,16 @@ export const importTransactions = async (req: Request, res: Response) => {
 
           const network = row[aHeaderMap['red']] ?? row[aHeaderMap['network']] ?? null;
 
+          const archivadaRaw = row[aHeaderMap['archivada']] ?? row[aHeaderMap['is_archived']] ?? row[aHeaderMap['filed']] ?? false;
+          const isArchived = archivadaRaw === true || archivadaRaw === 'true' || archivadaRaw === 1 || archivadaRaw === '1' || String(archivadaRaw).toLowerCase() === 'archivada';
+
           const accType = tipoRaw === 'credit_card' ? 'credit_card' : 'debit';
           const cleanName = String(accName).trim();
           const accountMatch = accounts.find(a => a.name.trim().toLowerCase() === cleanName.toLowerCase());
           if (accountMatch) {
             await query(
-              'UPDATE accounts SET initial_balance = $1, type = $2, closing_day = $3, due_day = $4, credit_limit = $5, network = $6 WHERE id = $7 AND user_id = $8',
-              [initialBal, accType, closingDay, dueDay, creditLimit, network, accountMatch.id, userId]
+              'UPDATE accounts SET initial_balance = $1, type = $2, closing_day = $3, due_day = $4, credit_limit = $5, network = $6, is_archived = $7 WHERE id = $8 AND user_id = $9',
+              [initialBal, accType, closingDay, dueDay, creditLimit, network, isArchived, accountMatch.id, userId]
             );
             accountMatch.initial_balance = initialBal;
             accountMatch.type = accType;
@@ -109,8 +112,8 @@ export const importTransactions = async (req: Request, res: Response) => {
             accountMatch.network = network;
           } else {
             const newAccRes = await query(
-              'INSERT INTO accounts (user_id, name_encrypted, type, initial_balance, closing_day, due_day, credit_limit, network) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id',
-              [userId, encrypt(cleanName), accType, initialBal, closingDay, dueDay, creditLimit, network]
+              'INSERT INTO accounts (user_id, name_encrypted, type, initial_balance, closing_day, due_day, credit_limit, network, is_archived) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
+              [userId, encrypt(cleanName), accType, initialBal, closingDay, dueDay, creditLimit, network, isArchived]
             );
             const newId = newAccRes.rows[0].id;
             accounts.push({ id: newId, name: cleanName, type: accType, initial_balance: initialBal, closing_day: closingDay, due_day: dueDay, credit_limit: creditLimit, network });

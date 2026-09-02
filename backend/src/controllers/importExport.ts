@@ -315,22 +315,69 @@ export const exportTransactions = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
 
-    // Fetch transactions with account and category names
-    const result = await query(`
-      SELECT 
-        t.date, t.description_encrypted, t.amount, t.type, t.paid, t.tags_encrypted,
-        a.name_encrypted as account_name,
-        c.name as category_name, c.parent_id as cat_parent_id
-      FROM transactions t
-      JOIN accounts a ON t.account_id = a.id
-      JOIN categories c ON t.category_id = c.id
-      WHERE a.user_id = $1
-      ORDER BY t.date DESC
-    `, [userId]);
-
     // We need all categories to find parent names if needed
     const catRes = await query('SELECT id, name FROM categories WHERE user_id = $1', [userId]);
     const catMap = catRes.rows.reduce((acc, c) => { acc[c.id] = c.name; return acc; }, {} as any);
+
+    // 1. Cuentas (Accounts)
+    const accQuery = await query(`
+      SELECT 
+        id, name_encrypted, type, initial_balance, closing_day, due_day, credit_limit, network, is_archived
+      FROM accounts
+      WHERE user_id = $1
+    `, [userId]);
+
+    const cuentasRows = accQuery.rows.map(r => ({
+      'Cuenta': r.name_encrypted ? decrypt(r.name_encrypted) : '',
+      'TipoCuenta': r.type,
+      'SaldoInicial': Number(r.initial_balance || 0),
+      'DiaCorte': r.closing_day || '',
+      'DiaPago': r.due_day || '',
+      'LimiteCredito': r.credit_limit || '',
+      'Red': r.network || '',
+      'Archivada': r.is_archived ? 'true' : 'false'
+    }));
+
+    // 2. Transferencias (Transfers)
+    const transQuery = await query(`
+      SELECT 
+        t.date, t.amount, t.tags_encrypted,
+        orig.name_encrypted as origin_name, orig.type as origin_type,
+        dest.name_encrypted as dest_name, dest.type as dest_type
+      FROM transactions t
+      JOIN accounts orig ON t.account_id = orig.id
+      JOIN accounts dest ON t.destination_account_id = dest.id
+      WHERE orig.user_id = $1 AND t.type = 'transfer'
+      ORDER BY t.date DESC
+    `, [userId]);
+
+    const transfRows = transQuery.rows.map(r => {
+      const d = new Date(r.date);
+      const dateStr = `${d.getDate().toString().padStart(2, '0')}/${(d.getMonth()+1).toString().padStart(2, '0')}/${d.getFullYear()}`;
+      return {
+        'Fecha': dateStr,
+        'Conta origem': r.origin_name ? decrypt(r.origin_name) : '',
+        'Conta destino': r.dest_name ? decrypt(r.dest_name) : '',
+        'Valor': Number(r.amount),
+        'Etiquetas': r.tags_encrypted ? decrypt(r.tags_encrypted) : '',
+        'TipoCuentaOrigen': r.origin_type,
+        'TipoCuentaDestino': r.dest_type
+      };
+    });
+
+    // 3. Transacciones (Regular Income/Expenses)
+    const result = await query(`
+      SELECT 
+        t.date, t.description_encrypted, t.amount, t.type, t.paid, t.tags_encrypted,
+        a.name_encrypted as account_name, a.type as account_type,
+        c.name as category_name, c.parent_id as cat_parent_id,
+        t.invoice_id
+      FROM transactions t
+      JOIN accounts a ON t.account_id = a.id
+      JOIN categories c ON t.category_id = c.id
+      WHERE a.user_id = $1 AND t.type IN ('income', 'expense')
+      ORDER BY t.date DESC
+    `, [userId]);
 
     const rows = result.rows.map(r => {
       const isExpense = r.type === 'expense';
@@ -357,17 +404,28 @@ export const exportTransactions = async (req: Request, res: Response) => {
         'Situación': r.paid ? 'Pago' : 'Pendiente',
         'Categoria': cat,
         'Subcategoria': subcat,
-        'Etiquetas': tags
+        'Etiquetas': tags,
+        'TipoCuenta': r.account_type,
+        'EsFaturaCartao': r.invoice_id ? 'true' : 'false'
       };
     });
 
-    const worksheet = xlsx.utils.json_to_sheet(rows);
     const workbook = xlsx.utils.book_new();
-    xlsx.utils.book_append_sheet(workbook, worksheet, 'Transacciones');
+
+    const txWorksheet = xlsx.utils.json_to_sheet(rows);
+    xlsx.utils.book_append_sheet(workbook, txWorksheet, 'Transacciones');
+
+    if (transfRows.length > 0) {
+      const tfWorksheet = xlsx.utils.json_to_sheet(transfRows);
+      xlsx.utils.book_append_sheet(workbook, tfWorksheet, 'Transferencias');
+    }
+
+    const accWorksheet = xlsx.utils.json_to_sheet(cuentasRows);
+    xlsx.utils.book_append_sheet(workbook, accWorksheet, 'Cuentas');
 
     const buffer = xlsx.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-    res.setHeader('Content-Disposition', 'attachment; filename="Transacciones.xlsx"');
+    res.setHeader('Content-Disposition', 'attachment; filename="Exportacion.xlsx"');
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.status(200).send(buffer);
   } catch (error) {

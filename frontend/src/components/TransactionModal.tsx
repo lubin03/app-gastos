@@ -14,9 +14,46 @@ interface Props {
   transaction?: any;
 }
 
+const formatDateToLocalInput = (dateInput?: string | Date) => {
+  if (!dateInput) {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  }
+  if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+    return dateInput;
+  }
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  }
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const getIsoDateFromInput = (inputDate: string, originalDate?: string) => {
+  if (!inputDate) return originalDate || new Date().toISOString();
+  if (originalDate && inputDate === formatDateToLocalInput(originalDate)) {
+    return originalDate;
+  }
+  const parts = inputDate.split('-').map(Number);
+  if (parts.length === 3 && !parts.some(isNaN)) {
+    const [y, m, d] = parts;
+    const now = new Date();
+    return new Date(y, m - 1, d, now.getHours(), now.getMinutes(), now.getSeconds()).toISOString();
+  }
+  return new Date().toISOString();
+};
+
 const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transaction }) => {
   const [type, setType] = useState('expense');
   const [amount, setAmount] = useState('');
+  const [date, setDate] = useState(formatDateToLocalInput());
   const [categoryId, setCategoryId] = useState('');
   const [description, setDescription] = useState('');
   const [accountId, setAccountId] = useState('');
@@ -43,6 +80,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
       if (transaction) {
         setType(transaction.type);
         setAmount(transaction.amount);
+        setDate(formatDateToLocalInput(transaction.date));
         setCategoryId(transaction.category_id);
         setDescription(transaction.description);
         setAccountId(transaction.account_id);
@@ -53,6 +91,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
       } else {
         setType('expense');
         setAmount('');
+        setDate(formatDateToLocalInput());
         setCategoryId('');
         setDescription('');
         setAccountId('');
@@ -77,7 +116,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
         description,
         accountId,
         destination_account_id: type === 'transfer' ? destinationAccountId : null,
-        date: transaction ? transaction.date : new Date().toISOString(),
+        date: getIsoDateFromInput(date, transaction?.date),
         tags: selectedTags,
         installments: isCreditCard && !transaction ? parseInt(installments, 10) || 1 : 1
       };
@@ -144,6 +183,15 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
         )}
         <IonItem className="glass-input" lines="none">
           <IonInput type="number" value={amount} onIonInput={e => setAmount(e.detail.value!)} label={t('common.amount')} labelPlacement="floating" />
+        </IonItem>
+        <IonItem className="glass-input" lines="none">
+          <IonInput 
+            type="date" 
+            value={date} 
+            onIonInput={e => setDate(e.detail.value!)} 
+            label={t('common.date', 'Fecha')} 
+            labelPlacement="floating" 
+          />
         </IonItem>
         <IonItem className="glass-input" lines="none">
           <IonSelect value={categoryId} onIonChange={e => setCategoryId(e.detail.value)} label={t('common.category')} labelPlacement="floating">

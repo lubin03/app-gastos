@@ -28,6 +28,9 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
   const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [frequentTransactions, setFrequentTransactions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState<any[]>([]);
   const { t } = useTranslation();
 
   useEffect(() => {
@@ -35,6 +38,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
       api.get('/accounts').then(setAccounts).catch(console.error);
       api.get('/categories').then(setCategories).catch(console.error);
       tagService.getTags().then(setAvailableTags).catch(console.error);
+      api.get('/transactions/frequent').then(res => setFrequentTransactions(res)).catch(console.error);
 
       if (transaction) {
         setType(transaction.type);
@@ -150,9 +154,52 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
             ))}
           </IonSelect>
         </IonItem>
-        <IonItem className="glass-input" lines="none">
-          <IonInput value={description} onIonInput={e => setDescription(e.detail.value!)} label={t('common.description')} labelPlacement="floating" />
-        </IonItem>
+        <div style={{ position: 'relative', zIndex: 10 }}>
+          <IonItem className="glass-input" lines="none">
+            <IonInput 
+              value={description} 
+              onIonInput={e => {
+                const val = e.detail.value!;
+                setDescription(val);
+                if (val.trim().length > 0) {
+                  const matches = frequentTransactions.filter(ft => ft.description.toLowerCase().includes(val.toLowerCase()));
+                  setFilteredSuggestions(matches);
+                  setShowSuggestions(matches.length > 0);
+                } else {
+                  setShowSuggestions(false);
+                }
+              }} 
+              onIonFocus={() => {
+                if (description.trim().length > 0 && filteredSuggestions.length > 0) setShowSuggestions(true);
+              }}
+              onIonBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+              label={t('common.description')} 
+              labelPlacement="floating" 
+            />
+          </IonItem>
+          {showSuggestions && (
+            <div style={{ position: 'absolute', top: '100%', left: '0', right: '0', zIndex: 50, background: 'rgba(30, 30, 45, 0.95)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.1)', borderRadius: '12px', maxHeight: '200px', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.5)', marginTop: '4px' }}>
+              {filteredSuggestions.map((ft, idx) => {
+                const cat = categories.find(c => c.id === ft.category_id);
+                const acc = accounts.find(a => a.id === ft.account_id);
+                return (
+                  <div key={idx} style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', cursor: 'pointer' }} onClick={() => {
+                    setDescription(ft.description);
+                    setCategoryId(ft.category_id);
+                    setAccountId(ft.account_id);
+                    if (ft.type && !transaction) setType(ft.type);
+                    setShowSuggestions(false);
+                  }}>
+                    <div style={{ fontWeight: 600, color: '#fff', fontSize: '15px' }}>{ft.description}</div>
+                    <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>
+                      {cat?.name || 'Categoría'} • {acc?.name || 'Cuenta'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
         <IonItem className="glass-input" lines="none">
           <IonSelect multiple value={selectedTags} onIonChange={e => setSelectedTags(e.detail.value)} label="Etiquetas" labelPlacement="floating">
             {availableTags.map(tag => (

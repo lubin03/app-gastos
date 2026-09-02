@@ -8,7 +8,7 @@ dotenv.config();
 import { register, login, googleAuth, getMe, updateProfile, forgotPassword, resetPassword } from './controllers/auth';
 import { createAccount, getAccounts, updateAccount, deleteAccount, payCreditCard } from './controllers/accounts';
 import { getCategories, createCategory, updateCategory, deleteCategory } from './controllers/categories';
-import { createTransaction, getTransactions, updateTransaction, deleteTransaction, getTransactionYears, deleteAllTransactions } from './controllers/transactions';
+import { createTransaction, getTransactions, updateTransaction, deleteTransaction, getTransactionYears, deleteAllTransactions, getFrequentTransactions } from './controllers/transactions';
 import { createBudget, getBudgets, updateBudget, deleteBudget } from './controllers/budgets';
 import { importTransactions, exportTransactions } from './controllers/importExport';
 import { getDashboardStats } from './controllers/dashboard';
@@ -77,6 +77,7 @@ app.use('/api/goals', goalsRoutes);
 app.use('/api/institutions', institutionsRoutes);
 
 // Transactions Routes
+app.get('/api/transactions/frequent', authenticate, getFrequentTransactions);
 app.post('/api/transactions/magic', authenticate, createMagicTransaction);
 app.delete('/api/transactions/all', authenticate, deleteAllTransactions);
 app.post('/api/transactions', authenticate, createTransaction);

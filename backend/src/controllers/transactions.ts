@@ -305,3 +305,50 @@ export const deleteAllTransactions = async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+export const getFrequentTransactions = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    
+    // Fetch last 8 months of transactions
+    const queryStr = `
+      SELECT t.id, t.description_encrypted, t.category_id, t.account_id, t.type
+      FROM transactions t
+      JOIN accounts a ON t.account_id = a.id
+      WHERE a.user_id = $1 AND t.date >= NOW() - INTERVAL '8 months'
+      ORDER BY t.date DESC
+    `;
+    const result = await query(queryStr, [userId]);
+    
+    // Count frequencies
+    const freqMap = new Map<string, { description: string, category_id: string, account_id: string, type: string, count: number }>();
+    
+    result.rows.forEach(row => {
+      const description = row.description_encrypted ? decrypt(row.description_encrypted) : '';
+      if (!description) return; // Skip empty descriptions
+      
+      const key = `${description.toLowerCase().trim()}|${row.category_id}|${row.account_id}`;
+      if (freqMap.has(key)) {
+        freqMap.get(key)!.count++;
+      } else {
+        freqMap.set(key, {
+          description: description.trim(), // keep original case
+          category_id: row.category_id,
+          account_id: row.account_id,
+          type: row.type,
+          count: 1
+        });
+      }
+    });
+    
+    // Sort and take top 20
+    const top20 = Array.from(freqMap.values())
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 20);
+      
+    res.status(200).json(top20);
+  } catch (error) {
+    console.error('Get frequent transactions error', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};

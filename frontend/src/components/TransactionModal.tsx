@@ -138,6 +138,19 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
     }
   };
 
+  const handleDelete = async () => {
+    if (!transaction) return;
+    if (window.confirm(t('transactions.confirmDelete', '¿Estás seguro de que deseas eliminar este registro?'))) {
+      try {
+        await api.delete(`/transactions/${transaction.id}`);
+        onSaved(); // Closes modal and refreshes list
+      } catch (err) {
+        console.error(err);
+        alert(t('transactions.deleteError', 'Error al eliminar.'));
+      }
+    }
+  };
+
   const selectableAccounts = accounts.filter(acc => !acc.is_archived || acc.id === accountId || acc.id === destinationAccountId);
 
   return (
@@ -331,6 +344,12 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
         <IonButton expand="block" shape="round" className="ion-margin-top" style={{ height: '50px', '--background': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)', fontWeight: 600, fontSize: '16px', marginTop: '24px' }} onClick={handleSave}>
           {t('common.save')}
         </IonButton>
+        {transaction && (
+          <IonButton expand="block" fill="clear" color="danger" style={{ marginTop: '8px', fontWeight: 600 }} onClick={handleDelete}>
+            <IonIcon icon={trashOutline} slot="start" />
+            {t('common.delete', 'Eliminar')}
+          </IonButton>
+        )}
       </IonContent>
     </IonModal>
   );

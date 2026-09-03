@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { IonContent, IonPage, IonItem, IonLabel, IonInput, IonButton, IonSpinner, IonToast, IonSelect, IonSelectOption, useIonAlert } from '@ionic/react';
+import { IonContent, IonPage, IonItem, IonLabel, IonInput, IonButton, IonSpinner, IonToast, IonSelect, IonSelectOption, useIonAlert, IonToggle } from '@ionic/react';
+import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import Header from '../components/Header';
@@ -16,6 +17,64 @@ const Profile: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ show: false, message: '', color: 'success' });
   const [presentAlert] = useIonAlert();
+
+  const [biometricsAvailable, setBiometricsAvailable] = useState(false);
+  const [biometricsEnabled, setBiometricsEnabled] = useState(false);
+
+  React.useEffect(() => {
+    const checkBiometrics = async () => {
+      try {
+        const result = await NativeBiometric.isAvailable();
+        if (result.isAvailable) {
+          setBiometricsAvailable(true);
+          const saved = await NativeBiometric.isCredentialsSaved({ server: 'app-gastos' });
+          setBiometricsEnabled(saved.isSaved);
+        }
+      } catch (e) {
+        console.error('Biometrics not available', e);
+      }
+    };
+    checkBiometrics();
+  }, []);
+
+  const handleBiometricToggle = async (e: any) => {
+    const isChecked = e.detail.checked;
+    if (isChecked === biometricsEnabled) return;
+
+    if (isChecked) {
+      if (!email || !currentPassword) {
+        setToast({ show: true, message: 'Para activar la huella, primero ingresá tu correo y contraseña actual arriba.', color: 'warning' });
+        setTimeout(() => e.target.checked = false, 50);
+        return;
+      }
+      try {
+        await NativeBiometric.verifyIdentity({
+          reason: 'Verificá tu identidad para activar el inicio de sesión con huella',
+          title: 'Activar Huella'
+        });
+        await NativeBiometric.setCredentials({
+          username: email,
+          password: currentPassword,
+          server: 'app-gastos'
+        });
+        setBiometricsEnabled(true);
+        setToast({ show: true, message: 'Huella activada correctamente', color: 'success' });
+      } catch (err: any) {
+        setTimeout(() => e.target.checked = false, 50);
+        if (err.code !== 16 && err.code !== 15) {
+           setToast({ show: true, message: 'Error al activar la huella', color: 'danger' });
+        }
+      }
+    } else {
+      try {
+        await NativeBiometric.deleteCredentials({ server: 'app-gastos' });
+        setBiometricsEnabled(false);
+        setToast({ show: true, message: 'Huella desactivada', color: 'medium' });
+      } catch (err) {
+        setToast({ show: true, message: 'Error al desactivar la huella', color: 'danger' });
+      }
+    }
+  };
 
   const handleUpdate = async () => {
     if (!email) {
@@ -144,6 +203,17 @@ const Profile: React.FC = () => {
                 <IonSelectOption value="es">{t('profile.spanish')}</IonSelectOption>
               </IonSelect>
             </IonItem>
+
+            {biometricsAvailable && !user?.isGoogle && (
+              <IonItem className="glass-input" lines="none" style={{ marginTop: '10px' }}>
+                <IonLabel>{t('profile.enableBiometrics', 'Iniciar sesión con huella')}</IonLabel>
+                <IonToggle 
+                  checked={biometricsEnabled} 
+                  onIonChange={handleBiometricToggle}
+                  slot="end"
+                />
+              </IonItem>
+            )}
 
             <IonButton 
               expand="block" 

@@ -22,7 +22,7 @@ export const register = async (req: Request, res: Response) => {
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await createUser(email, name, passwordHash);
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30m' });
     res.status(201).json({ token, user: { id: user.id, name, email, isGoogle: false } });
   } catch (error) {
     console.error('Register error', error);
@@ -47,7 +47,7 @@ export const login = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30m' });
     res.status(200).json({ 
       token, 
       user: { 
@@ -82,7 +82,7 @@ export const googleAuth = async (req: Request, res: Response) => {
       }
     }
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30m' });
     res.status(200).json({ 
       token, 
       user: { 

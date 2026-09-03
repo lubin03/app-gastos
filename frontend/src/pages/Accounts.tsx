@@ -320,9 +320,10 @@ const Accounts: React.FC = () => {
               </IonList>
             </>
           )}
+        </div>
 
-          <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '16px', marginRight: '8px' }}>
-            <IonFabButton onClick={() => {
+        <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '16px', marginRight: '8px' }}>
+          <IonFabButton onClick={() => {
               setEditingAccount(null);
               setNewAccountName('');
               setSelectedInstitutionId(null);
@@ -533,7 +534,6 @@ const Accounts: React.FC = () => {
               </IonButton>
             </IonContent>
           </IonModal>
-        </div>
       </IonContent>
     </IonPage>
   );

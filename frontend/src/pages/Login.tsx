@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonInput, IonButton, IonItem, IonLabel, IonText, IonSpinner } from '@ionic/react';
+import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonInput, IonButton, IonItem, IonLabel, IonText, IonSpinner, IonIcon } from '@ionic/react';
+import { fingerPrintOutline } from 'ionicons/icons';
+import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { useHistory, Link } from 'react-router-dom';
@@ -13,6 +15,53 @@ const Login: React.FC = () => {
   const { login } = useAuth();
   const history = useHistory();
   const { t } = useTranslation();
+  const [biometricsSaved, setBiometricsSaved] = useState(false);
+
+  React.useEffect(() => {
+    const checkBiometrics = async () => {
+      try {
+        const result = await NativeBiometric.isAvailable();
+        if (result.isAvailable) {
+          const saved = await NativeBiometric.isCredentialsSaved({ server: 'app-gastos' });
+          if (saved.isSaved) {
+            setBiometricsSaved(true);
+            // Attempt auto-login
+            setTimeout(() => handleBiometricLogin(), 500);
+          }
+        }
+      } catch (err) {
+        console.error('Biometrics check error', err);
+      }
+    };
+    checkBiometrics();
+  }, []);
+
+  const handleBiometricLogin = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      
+      // Request fingerprint explicitly
+      await NativeBiometric.verifyIdentity({
+        reason: 'Verificá tu identidad para iniciar sesión',
+        title: 'Iniciar Sesión'
+      });
+
+      const credentials = await NativeBiometric.getCredentials({ server: 'app-gastos' });
+      const response = await api.post('/auth/login', { 
+        email: credentials.username, 
+        password: credentials.password 
+      });
+      login(response.token, response.user);
+      history.push('/app/dashboard');
+    } catch (err: any) {
+      if (err.code !== 16 && err.code !== 15) { // Ignore user cancel / system cancel
+         setError(err.message || 'Error al iniciar con huella');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,6 +111,13 @@ const Login: React.FC = () => {
               <IonButton expand="block" shape="round" type="submit" className="ion-margin-top" style={{ height: '50px', '--background': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)', fontWeight: 600, fontSize: '16px' }} disabled={loading}>
                 {loading ? <IonSpinner name="crescent" color="light" /> : t('auth.login.submit')}
               </IonButton>
+
+              {biometricsSaved && (
+                <IonButton expand="block" shape="round" color="secondary" className="ion-margin-top" style={{ height: '50px', fontWeight: 600, fontSize: '16px' }} onClick={handleBiometricLogin} disabled={loading}>
+                  <IonIcon icon={fingerPrintOutline} slot="start" />
+                  Iniciar con Huella
+                </IonButton>
+              )}
 
               <IonButton expand="block" shape="round" fill="outline" color="medium" className="ion-margin-top" style={{ height: '44px', fontWeight: 500 }} onClick={() => alert('Google Auth not implemented yet')}>
                 {t('auth.login.googleAuth')}

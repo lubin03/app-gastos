@@ -73,9 +73,10 @@ const Budgets: React.FC = () => {
               {budgets.length === 0 && <div className="ion-padding ion-text-center" style={{ color: 'var(--ion-color-medium, #94a3b8)' }}>{t('common.noTransactions')}</div>}
             </IonList>
           )}
+        </div>
 
-          <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '16px', marginRight: '8px' }}>
-            <IonFabButton onClick={() => setShowModal(true)}>
+        <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '16px', marginRight: '8px' }}>
+          <IonFabButton onClick={() => setShowModal(true)}>
               <IonIcon icon={add} />
             </IonFabButton>
           </IonFab>
@@ -106,7 +107,6 @@ const Budgets: React.FC = () => {
               </IonButton>
             </IonContent>
           </IonModal>
-        </div>
       </IonContent>
     </IonPage>
   );

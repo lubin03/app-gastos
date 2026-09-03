@@ -127,9 +127,10 @@ const Goals: React.FC = () => {
               })}
             </IonList>
           )}
+        </div>
 
-          <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '16px', marginRight: '8px' }}>
-            <IonFabButton onClick={openCreateModal} style={{ '--background': 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
+        <IonFab vertical="bottom" horizontal="end" slot="fixed" style={{ marginBottom: '16px', marginRight: '8px' }}>
+          <IonFabButton onClick={openCreateModal} style={{ '--background': 'linear-gradient(135deg, #a855f7 0%, #ec4899 100%)' }}>
               <IonIcon icon={add} />
             </IonFabButton>
           </IonFab>
@@ -169,7 +170,6 @@ const Goals: React.FC = () => {
               )}
             </IonContent>
           </IonModal>
-        </div>
       </IonContent>
     </IonPage>
   );

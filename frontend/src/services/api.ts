@@ -28,6 +28,13 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
   });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      localStorage.removeItem('token');
+      if (window.location.pathname !== '/login' && window.location.pathname !== '/register') {
+        window.location.href = '/login';
+      }
+    }
+
     let message = 'API Error';
     try {
       const errorData = await response.json();

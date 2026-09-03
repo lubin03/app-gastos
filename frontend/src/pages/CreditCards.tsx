@@ -259,16 +259,18 @@ const CreditCards: React.FC = () => {
                           </IonLabel>
                           <div slot="end" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             {inv.is_current && <IonBadge color="primary">Actual</IonBadge>}
-                            {inv.status === 'paid' && <IonBadge color="success">Pagado</IonBadge>}
-                            {inv.status === 'closed' && <IonBadge color="warning">Cerrado</IonBadge>}
+                            {(inv.status === 'paid' || (inv.total_amount > 0 && inv.paid_amount >= inv.total_amount)) && <IonBadge color="success">Pagado</IonBadge>}
+                            {inv.status === 'closed' && inv.paid_amount < inv.total_amount && <IonBadge color="warning">Cerrado</IonBadge>}
                           </div>
                         </IonItem>
                         
                         <div className="ion-padding" slot="content" style={{ background: 'transparent' }}>
-                          {inv.status !== 'paid' && !inv.is_current && (
+                          {inv.status !== 'paid' && !inv.is_current && (inv.total_amount === 0 || inv.paid_amount < inv.total_amount) && (
                             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
                               <IonButton size="small" shape="round" onClick={() => {
                                 setSelectedInvoiceToPay(inv.id);
+                                const unpaid = Math.max(0, inv.total_amount - inv.paid_amount);
+                                setPayAmount(unpaid.toString());
                                 setShowPayModal(true);
                               }}>
                                 Pagar esta factura

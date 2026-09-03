@@ -85,6 +85,15 @@ export const createAccount = async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Account name is required' });
     }
 
+    if (type === 'credit_card') {
+      if (!closing_day || closing_day < 1 || closing_day > 31) {
+        return res.status(400).json({ error: 'Invalid closing_day (must be 1-31)' });
+      }
+      if (!due_day || due_day < 1 || due_day > 31) {
+        return res.status(400).json({ error: 'Invalid due_day (must be 1-31)' });
+      }
+    }
+
     const nameEncrypted = encrypt(name);
     const parsedInitialBalance = initial_balance !== undefined && initial_balance !== null ? (parseFloat(initial_balance) || 0) : 0;
     const result = await query(
@@ -119,6 +128,15 @@ export const updateAccount = async (req: Request, res: Response) => {
 
     if (!name) {
       return res.status(400).json({ error: 'Account name is required' });
+    }
+
+    if (type === 'credit_card') {
+      if (!closing_day || closing_day < 1 || closing_day > 31) {
+        return res.status(400).json({ error: 'Invalid closing_day (must be 1-31)' });
+      }
+      if (!due_day || due_day < 1 || due_day > 31) {
+        return res.status(400).json({ error: 'Invalid due_day (must be 1-31)' });
+      }
     }
 
     const nameEncrypted = encrypt(name);
@@ -186,7 +204,11 @@ export const payCreditCard = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const { id } = req.params; // Credit card account ID
-    const { funding_account_id, amount, category_id, date, description } = req.body;
+    const { invoice_id, funding_account_id, amount, category_id, date, description } = req.body;
+
+    if (!invoice_id) {
+      return res.status(400).json({ error: 'invoice_id is required' });
+    }
 
     // Validate both accounts exist and belong to user
     const ccResult = await query('SELECT id FROM accounts WHERE id = $1 AND user_id = $2 AND type = $3', [id, userId, 'credit_card']);
@@ -195,19 +217,23 @@ export const payCreditCard = async (req: Request, res: Response) => {
     const fundResult = await query('SELECT id FROM accounts WHERE id = $1 AND user_id = $2', [funding_account_id, userId]);
     if (fundResult.rowCount === 0) return res.status(404).json({ error: 'Funding account not found' });
 
-    // 1. Mark all unpaid expense transactions on the CC as paid
+    // Validate invoice exists
+    const invResult = await query('SELECT id FROM credit_card_invoices WHERE id = $1 AND account_id = $2', [invoice_id, id]);
+    if (invResult.rowCount === 0) return res.status(404).json({ error: 'Invoice not found' });
+
+    // 1. Mark all unpaid expense transactions on the specific invoice as paid
     await query(`
       UPDATE transactions 
       SET paid = TRUE 
-      WHERE account_id = $1 AND paid = FALSE AND type = 'expense'
-    `, [id]);
+      WHERE invoice_id = $1 AND paid = FALSE AND type = 'expense'
+    `, [invoice_id]);
 
-    // Update invoices status to paid
+    // Update specific invoice status to paid
     await query(`
       UPDATE credit_card_invoices 
       SET status = 'paid'
-      WHERE account_id = $1 AND status != 'paid'
-    `, [id]);
+      WHERE id = $1
+    `, [invoice_id]);
 
     // 2. Create the payment expense on the funding account
     const descEncrypted = description ? encrypt(description) : null;

@@ -138,9 +138,13 @@ const CreditCards: React.FC = () => {
   };
 
   const handlePayInvoice = async () => {
-    if (!selectedFundingAccount || !payAmount) return;
+    if (!selectedFundingAccount || !payAmount || selectedInvoiceId === 'ALL') {
+      presentToast({ message: 'Seleccione una factura específica para pagar', duration: 2500, color: 'warning' });
+      return;
+    }
     try {
       await api.post(`/accounts/${selectedCard.id}/pay`, {
+        invoice_id: selectedInvoiceId,
         funding_account_id: selectedFundingAccount,
         amount: parseFloat(payAmount),
         description: `Pago Tarjeta ${selectedCard.name}`

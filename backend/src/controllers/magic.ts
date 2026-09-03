@@ -6,10 +6,10 @@ import { encrypt, decrypt } from '../utils/crypto';
 export const createMagicTransaction = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const { text, audioBase64, mimeType } = req.body;
+    const { text, audioBase64, imageBase64, mimeType } = req.body;
 
-    if (!text && !audioBase64) {
-      return res.status(400).json({ error: 'Text or Audio is required' });
+    if (!text && !audioBase64 && !imageBase64) {
+      return res.status(400).json({ error: 'Text, Audio, or Image is required' });
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
@@ -39,8 +39,8 @@ export const createMagicTransaction = async (req: Request, res: Response) => {
 
     // 4. Construct Prompt
     const prompt = `
-You are a financial assistant parsing a user's natural language input into a transaction JSON.
-${text ? `User input: "${text}"` : 'User provided an audio recording of their input in Spanish. Please transcribe and listen carefully to the exact numbers.'}
+You are a financial assistant parsing a user's input into a transaction JSON.
+${text ? `User input: "${text}"` : audioBase64 ? 'User provided an audio recording of their input in Spanish. Please transcribe and listen carefully to the exact numbers.' : 'User provided an image of a receipt or ticket. Please extract the total amount, what was bought, and determine the appropriate category.'}
 
 Available Accounts:
 ${accounts.map(a => `- ${a.name} (ID: ${a.id}, Type: ${a.type})`).join('\n')}
@@ -55,7 +55,7 @@ Instructions:
 4. Determine the "account_id" from the Available Accounts. If the user mentions "tarjeta", pick a credit_card account. If they don't specify, pick the first account (${accounts[0].id}).
 5. Determine a suitable "category_name". If it perfectly matches an Existing Category, use it. If not, invent a short, logical category name (e.g. "Comida", "Transporte", "Sueldo").
 6. Determine if it's "paid" (boolean). (Credit card expenses are usually paid=false if it's debt, but just default to true for debit, false for credit card).
-7. Transcribe the user's audio exactly into the "transcript" field. CRITICAL: If the audio is silent, unintelligible, or you cannot clearly hear a specific amount and item, you MUST write "SILENCE" in the transcript field. DO NOT invent or guess transactions. NEVER output default values like 25000.
+7. Transcribe the user's audio exactly into the "transcript" field (if image, just summarize the items bought). CRITICAL: If the input is unintelligible, silent, or if the image does NOT contain a valid receipt/invoice, you MUST write "SILENCE" (for audio) or "INVALID_IMAGE" (for images) in the transcript field. DO NOT invent or guess transactions. NEVER output default values like 25000.
 8. Return ONLY a valid raw JSON object, without markdown formatting like \`\`\`json.
 
 Format exactly like this:
@@ -79,6 +79,13 @@ Format exactly like this:
           data: audioBase64
         }
       });
+    } else if (imageBase64 && mimeType) {
+      parts.push({
+        inlineData: {
+          mimeType: mimeType,
+          data: imageBase64
+        }
+      });
     }
 
     const result = await model.generateContent(parts);
@@ -93,8 +100,8 @@ Format exactly like this:
     try {
       parsed = JSON.parse(responseText);
       console.log('Gemini Transcript:', parsed.transcript);
-      if (parsed.transcript === 'SILENCE') {
-        return res.status(400).json({ error: 'No se escuchó nada o el audio es ininteligible. Intenta hablar más fuerte o acércate al micrófono.' });
+      if (parsed.transcript === 'SILENCE' || parsed.transcript === 'INVALID_IMAGE') {
+        return res.status(400).json({ error: 'No se pudo entender el audio o la imagen proporcionada. Intenta nuevamente.' });
       }
     } catch (err) {
       console.error('Failed to parse Gemini JSON:', responseText);

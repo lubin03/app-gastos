@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { IonModal, IonHeader, IonToolbar, IonTitle, IonContent, IonButton, IonButtons, IonTextarea, IonIcon, IonSpinner, IonItem } from '@ionic/react';
-import { closeOutline, colorWandOutline, micOutline, stopCircleOutline } from 'ionicons/icons';
+import { closeOutline, colorWandOutline, micOutline, stopCircleOutline, imageOutline } from 'ionicons/icons';
 import { api } from '../services/api';
 import { useTranslation, Trans } from 'react-i18next';
 
@@ -19,6 +19,7 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     if (isOpen && initialText) {
@@ -73,7 +74,52 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
     submitToApi({ text });
   };
 
-  const submitToApi = async (payload: { text?: string; audioBase64?: string; mimeType?: string }) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const MAX_SIZE = 1024;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height *= MAX_SIZE / width;
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width *= MAX_SIZE / height;
+            height = MAX_SIZE;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(img, 0, 0, width, height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        const base64data = dataUrl.split(',')[1];
+        
+        submitToApi({ imageBase64: base64data, mimeType: 'image/jpeg' });
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+    
+    // reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const submitToApi = async (payload: { text?: string; audioBase64?: string; imageBase64?: string; mimeType?: string }) => {
     setLoading(true);
     try {
       const res = await api.post('/transactions/magic', payload);
@@ -104,9 +150,18 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
         <div style={{ marginBottom: '20px', textAlign: 'center' }}>
           <p style={{ color: 'var(--ion-color-medium)', fontSize: '14px', margin: '0 0 16px 0' }}>
             <Trans i18nKey="magicModal.instruction">
-              Escribe tu gasto o <strong>mantén presionado el micrófono</strong> para hablar.
+              Escribe tu gasto, <strong>graba un audio</strong> o <strong>sube un ticket</strong>.
             </Trans>
           </p>
+
+          <input 
+            type="file" 
+            accept="image/*" 
+            capture="environment" 
+            hidden 
+            ref={fileInputRef} 
+            onChange={handleImageSelect} 
+          />
           
           <IonItem lines="none" className="glass-input" style={{ marginBottom: '20px', borderRadius: '16px' }}>
             <IonTextarea
@@ -135,29 +190,45 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
               )}
             </IonButton>
           ) : (
-            <IonButton 
-              expand="block" 
-              shape="round"
-              onMouseDown={startRecording}
-              onMouseUp={stopRecording}
-              onTouchStart={startRecording}
-              onTouchEnd={stopRecording}
-              disabled={loading} 
-              style={{ 
-                height: '60px', 
-                '--background': isRecording ? 'var(--ion-color-danger)' : 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
-                transition: 'all 0.3s ease',
-                fontWeight: 600,
-                fontSize: '16px'
-              }}
-            >
-              {loading ? <IonSpinner name="dots" color="light" /> : (
-                <>
-                  <IonIcon icon={isRecording ? stopCircleOutline : micOutline} slot="start" style={{ fontSize: '24px' }} />
-                  {isRecording ? 'Suelta para enviar...' : 'Mantén presionado para hablar'}
-                </>
-              )}
-            </IonButton>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <IonButton 
+                shape="round"
+                onMouseDown={startRecording}
+                onMouseUp={stopRecording}
+                onTouchStart={startRecording}
+                onTouchEnd={stopRecording}
+                disabled={loading} 
+                style={{ 
+                  flex: 1,
+                  height: '60px', 
+                  '--background': isRecording ? 'var(--ion-color-danger)' : 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
+                  transition: 'all 0.3s ease',
+                  fontWeight: 600,
+                  fontSize: '16px'
+                }}
+              >
+                {loading ? <IonSpinner name="dots" color="light" /> : (
+                  <>
+                    <IonIcon icon={isRecording ? stopCircleOutline : micOutline} slot="start" style={{ fontSize: '24px' }} />
+                    {isRecording ? 'Suelta...' : 'Mantén presionado'}
+                  </>
+                )}
+              </IonButton>
+
+              <IonButton
+                shape="round"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={loading}
+                style={{ 
+                  height: '60px', 
+                  width: '60px',
+                  '--background': 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)',
+                  fontWeight: 600,
+                }}
+              >
+                <IonIcon icon={imageOutline} style={{ fontSize: '24px' }} />
+              </IonButton>
+            </div>
           )}
         </div>
       </IonContent>

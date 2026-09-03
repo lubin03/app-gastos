@@ -143,9 +143,8 @@ export const importTransactions = async (req: Request, res: Response) => {
       const tipoCuentaCol = row[headerMap['TipoCuenta']] || '';
       const esFatura = row[headerMap['EsFaturaCartao']] === true || row[headerMap['EsFaturaCartao']] === 'true';
 
-      // Skip card bill payment rows (isFaturaCartao) — they are the "Pago de Factura" transfer
-      // that will be handled as a transfer in the Transferencias sheet instead.
-      if (esFatura) continue;
+      // Note: EsFaturaCartao indicates it's a credit card transaction attached to an invoice.
+      // We should NOT skip these; we must import them.
 
       if (val === 0 && !desc) continue; // skip empty rows
 

@@ -79,3 +79,29 @@ VITE_GOOGLE_CLIENT_ID=your_google_client_id.apps.googleusercontent.com
 ## Testing
 - **Backend**: `cd backend && npm test`
 - **Frontend**: `cd frontend && npm test`
+
+## Generating Android APK
+
+If you make changes to the frontend code (React components, CSS, HTML) or install new Capacitor plugins, you need to sync those changes to the native Android project before generating the APK.
+
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+2. Build the production web assets:
+   ```bash
+   pnpm run build
+   ```
+3. Sync the web assets and plugins to the native Android project:
+   ```bash
+   npx cap sync android
+   ```
+4. **Generate the APK**:
+   - **Option A (Android Studio)**: Open the `frontend/android` folder in Android Studio and go to `Build > Build Bundle(s) / APK(s) > Build APK(s)`.
+   - **Option B (Terminal)**: If you have the Android SDK (`ANDROID_HOME`) configured globally:
+     ```bash
+     cd android
+     ./gradlew assembleDebug
+     ```
+   
+*The generated APK will be available at `frontend/android/app/build/outputs/apk/debug/app-debug.apk`.*

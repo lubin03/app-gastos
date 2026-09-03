@@ -35,7 +35,6 @@ export const createMagicTransaction = async (req: Request, res: Response) => {
 
     // 3. Initialize Gemini
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // 4. Construct Prompt
     const prompt = `
@@ -88,7 +87,32 @@ Format exactly like this:
       });
     }
 
-    const result = await model.generateContent(parts);
+    let result;
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (attempts < maxAttempts) {
+      const currentModelName = attempts === maxAttempts - 1 ? 'gemini-3.5-flash' : 'gemini-3.5-flash-lite';
+      try {
+        // Use Lite for the first attempts. If it keeps failing, fallback to standard Flash.
+        const currentModel = genAI.getGenerativeModel({ model: currentModelName });
+        
+        result = await currentModel.generateContent(parts);
+        break; // Success
+      } catch (err: any) {
+        attempts++;
+        console.error(`Gemini attempt ${attempts} failed (${currentModelName}):`, err.message);
+        
+        if (attempts >= maxAttempts) {
+          throw new Error('Los servidores de IA están congestionados (Google 500). Por favor, intenta de nuevo en unos minutos.');
+        }
+        // Wait 1.5 seconds before retrying
+        await new Promise(resolve => setTimeout(resolve, 1500));
+      }
+    }
+
+    if (!result) throw new Error('Failed to get a response from Gemini');
+
     let responseText = result.response.text().trim();
     
     // Clean markdown if Gemini accidentally includes it

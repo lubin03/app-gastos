@@ -35,7 +35,7 @@ export const createMagicTransaction = async (req: Request, res: Response) => {
 
     // 3. Initialize Gemini
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // 4. Construct Prompt
     const prompt = `

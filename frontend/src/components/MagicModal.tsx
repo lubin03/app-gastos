@@ -69,6 +69,14 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
     }
   };
 
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
   const handleSubmitText = () => {
     if (!text.trim()) return;
     submitToApi({ text });
@@ -193,10 +201,7 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
             <div style={{ display: 'flex', gap: '10px' }}>
               <IonButton 
                 shape="round"
-                onMouseDown={startRecording}
-                onMouseUp={stopRecording}
-                onTouchStart={startRecording}
-                onTouchEnd={stopRecording}
+                onClick={toggleRecording}
                 disabled={loading} 
                 style={{ 
                   flex: 1,
@@ -210,7 +215,7 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
                 {loading ? <IonSpinner name="dots" color="light" /> : (
                   <>
                     <IonIcon icon={isRecording ? stopCircleOutline : micOutline} slot="start" style={{ fontSize: '24px' }} />
-                    {isRecording ? 'Suelta...' : 'Mantén presionado'}
+                    {isRecording ? 'Detener grabación' : 'Tocar para grabar'}
                   </>
                 )}
               </IonButton>

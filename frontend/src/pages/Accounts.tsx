@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { IonContent, IonPage, IonTitle, IonToolbar, IonList, IonItem, IonLabel, IonFab, IonFabButton, IonIcon, IonModal, IonButton, IonInput, IonSpinner, useIonViewWillEnter, IonGrid, IonRow, IonCol, IonSelect, IonSelectOption, IonButtons, IonHeader, IonSearchbar, IonSegment, IonSegmentButton } from '@ionic/react';
+import { IonContent, IonPage, IonTitle, IonToolbar, IonList, IonItem, IonLabel, IonFab, IonFabButton, IonIcon, IonModal, IonButton, IonInput, IonSpinner, useIonViewWillEnter, IonGrid, IonRow, IonCol, IonSelect, IonSelectOption, IonButtons, IonHeader, IonSearchbar, IonSegment, IonSegmentButton, IonToggle } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { add, wallet, card, cash, home, car, cart, restaurant, airplane, medkit, school, gift, barbell, business, briefcase, laptop, phonePortrait, createOutline, checkmark, archiveOutline, chevronDownOutline, chevronUpOutline } from 'ionicons/icons';
 import { api } from '../services/api';
@@ -57,6 +57,8 @@ const Accounts: React.FC = () => {
   const [closingDay, setClosingDay] = useState('');
   const [dueDay, setDueDay] = useState('');
   const [network, setNetwork] = useState('');
+  const [includeInDashboardSum, setIncludeInDashboardSum] = useState(true);
+  const [showInDashboard, setShowInDashboard] = useState(true);
 
   // Pay Modal
   const [showPayModal, setShowPayModal] = useState(false);
@@ -103,6 +105,8 @@ const Accounts: React.FC = () => {
     setClosingDay(acc.closing_day || '');
     setDueDay(acc.due_day || '');
     setNetwork(acc.network || '');
+    setIncludeInDashboardSum(acc.include_in_dashboard_sum !== false);
+    setShowInDashboard(acc.show_in_dashboard !== false);
     setShowModal(true);
   };
 
@@ -118,7 +122,9 @@ const Accounts: React.FC = () => {
         credit_limit: accountType === 'credit_card' ? parseFloat(creditLimit) : null,
         closing_day: accountType === 'credit_card' ? parseInt(closingDay) : null,
         due_day: accountType === 'credit_card' ? parseInt(dueDay) : null,
-        network: accountType === 'credit_card' ? network : null
+        network: accountType === 'credit_card' ? network : null,
+        include_in_dashboard_sum: includeInDashboardSum,
+        show_in_dashboard: showInDashboard
       };
 
       if (editingAccount) {
@@ -136,6 +142,8 @@ const Accounts: React.FC = () => {
       setClosingDay('');
       setDueDay('');
       setNetwork('');
+      setIncludeInDashboardSum(true);
+      setShowInDashboard(true);
       setEditingAccount(null);
       setShowModal(false);
       loadData();
@@ -325,6 +333,8 @@ const Accounts: React.FC = () => {
               setClosingDay('');
               setDueDay('');
               setNetwork('');
+              setIncludeInDashboardSum(true);
+              setShowInDashboard(true);
               setShowModal(true);
             }}>
               <IonIcon icon={add} />
@@ -384,6 +394,22 @@ const Accounts: React.FC = () => {
                   </IonItem>
                 </>
               )}
+              
+              <IonItem className="glass-input" lines="none" style={{ marginTop: '16px' }}>
+                <IonLabel style={{ whiteSpace: 'normal' }}>
+                  <h2 style={{ fontWeight: 600 }}>Incluir en sumatoria del dashboard</h2>
+                  <p style={{ fontSize: '12px' }}>El saldo de esta cuenta se sumará al balance total.</p>
+                </IonLabel>
+                <IonToggle checked={includeInDashboardSum} onIonChange={e => setIncludeInDashboardSum(e.detail.checked)} />
+              </IonItem>
+
+              <IonItem className="glass-input" lines="none" style={{ marginTop: '8px', marginBottom: '8px' }}>
+                <IonLabel style={{ whiteSpace: 'normal' }}>
+                  <h2 style={{ fontWeight: 600 }}>Mostrar en lista rápida del dashboard</h2>
+                  <p style={{ fontSize: '12px' }}>La cuenta aparecerá en las tarjetas del dashboard.</p>
+                </IonLabel>
+                <IonToggle checked={showInDashboard} onIonChange={e => setShowInDashboard(e.detail.checked)} />
+              </IonItem>
               
               <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ion-color-medium, #94a3b8)', marginTop: '20px', marginBottom: '8px' }}>Ícono o Banco</h4>
               

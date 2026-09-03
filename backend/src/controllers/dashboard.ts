@@ -19,21 +19,21 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         SELECT a.type as account_type, t.type as tx_type, t.paid, t.amount
         FROM transactions t
         JOIN accounts a ON t.account_id = a.id
-        WHERE a.user_id = $1 AND t.type != 'transfer'${txDateFilter}
+        WHERE a.user_id = $1 AND t.type != 'transfer' AND a.include_in_dashboard_sum = TRUE${txDateFilter}
         
         UNION ALL
         
         SELECT a.type as account_type, 'expense' as tx_type, t.paid, t.amount
         FROM transactions t
         JOIN accounts a ON t.account_id = a.id
-        WHERE a.user_id = $1 AND t.type = 'transfer'${txDateFilter}
+        WHERE a.user_id = $1 AND t.type = 'transfer' AND a.include_in_dashboard_sum = TRUE${txDateFilter}
         
         UNION ALL
         
         SELECT d.type as account_type, 'income' as tx_type, t.paid, t.amount
         FROM transactions t
         JOIN accounts d ON t.destination_account_id = d.id
-        WHERE d.user_id = $1 AND t.type = 'transfer'${txDateFilter}
+        WHERE d.user_id = $1 AND t.type = 'transfer' AND d.include_in_dashboard_sum = TRUE${txDateFilter}
       )
       SELECT account_type as type, tx_type, paid, SUM(amount) as total
       FROM normalized_txs
@@ -42,7 +42,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 
     // Initial balance sum for bank/cash accounts
     const initRes = await query(
-      `SELECT SUM(initial_balance) as init_sum FROM accounts WHERE user_id = $1 AND type != 'credit_card'`,
+      `SELECT SUM(initial_balance) as init_sum FROM accounts WHERE user_id = $1 AND type != 'credit_card' AND include_in_dashboard_sum = TRUE`,
       [userId]
     );
     let bankTotal = parseFloat(initRes.rows[0]?.init_sum || '0');
@@ -69,7 +69,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       SELECT t.type, SUM(t.amount) as total
       FROM transactions t
       JOIN accounts a ON t.account_id = a.id
-      WHERE a.user_id = $1
+      WHERE a.user_id = $1 AND a.include_in_dashboard_sum = TRUE
     `;
     const params: any[] = [userId];
 
@@ -94,7 +94,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
       FROM transactions t
       JOIN categories c ON t.category_id = c.id
       JOIN accounts a ON t.account_id = a.id
-      WHERE a.user_id = $1
+      WHERE a.user_id = $1 AND a.include_in_dashboard_sum = TRUE
     `;
     const catParams: any[] = [userId];
 
@@ -123,7 +123,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
         SUM(CASE WHEN t.type = 'expense' THEN t.amount ELSE 0 END) as expense
       FROM transactions t
       JOIN accounts a ON t.account_id = a.id
-      WHERE a.user_id = $1
+      WHERE a.user_id = $1 AND a.include_in_dashboard_sum = TRUE
       GROUP BY TO_CHAR(t.date, 'YYYY-MM')
       ORDER BY month DESC
       LIMIT 6

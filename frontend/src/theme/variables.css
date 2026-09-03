@@ -170,6 +170,17 @@ ion-tab-bar.custom-tab-bar {
   height: 65px;
   position: relative;
   z-index: 999;
+  
+  /* Habilitar scroll horizontal en móviles */
+  overflow-x: auto;
+  overflow-y: hidden;
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+}
+
+/* Ocultar barra de scroll nativa */
+.custom-tab-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .custom-tab-bar ion-tab-button {
@@ -177,6 +188,10 @@ ion-tab-bar.custom-tab-bar {
   --color-selected: #a855f7;
   transition: all 0.25s ease;
   background: transparent;
+  
+  /* Asegurar tamaño mínimo para scroll en dispositivos móviles */
+  min-width: 72px;
+  flex-shrink: 0;
 }
 
 .custom-tab-bar ion-tab-button.tab-selected ion-icon {
@@ -296,6 +311,11 @@ body.light-theme ion-modal::part(content) {
 body.light-theme ion-alert .alert-wrapper {
   background: rgba(255, 255, 255, 0.96) !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+body.light-theme ion-popover::part(content) {
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #0f172a;
 }
 body.light-theme ion-content {
   --background: radial-gradient(circle at 10% 0%, rgba(139, 92, 246, 0.08) 0%, transparent 50%),

@@ -64,6 +64,8 @@ export const getAccounts = async (req: Request, res: Response) => {
       due_day: row.due_day,
       network: row.network,
       is_archived: row.is_archived,
+      include_in_dashboard_sum: row.include_in_dashboard_sum,
+      show_in_dashboard: row.show_in_dashboard,
       initial_balance: Number(row.initial_balance || 0),
       created_at: row.created_at,
       balance: Number(row.balance)
@@ -79,7 +81,7 @@ export const getAccounts = async (req: Request, res: Response) => {
 export const createAccount = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const { name, icon, institution_id, type, credit_limit, closing_day, due_day, network, initial_balance } = req.body;
+    const { name, icon, institution_id, type, credit_limit, closing_day, due_day, network, initial_balance, include_in_dashboard_sum, show_in_dashboard } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Account name is required' });
@@ -97,8 +99,8 @@ export const createAccount = async (req: Request, res: Response) => {
     const nameEncrypted = encrypt(name);
     const parsedInitialBalance = initial_balance !== undefined && initial_balance !== null ? (parseFloat(initial_balance) || 0) : 0;
     const result = await query(
-      'INSERT INTO accounts (user_id, name_encrypted, icon, institution_id, type, credit_limit, closing_day, due_day, network, initial_balance) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *',
-      [userId, nameEncrypted, icon || null, institution_id || null, type || 'debit', credit_limit || null, closing_day || null, due_day || null, network || null, parsedInitialBalance]
+      'INSERT INTO accounts (user_id, name_encrypted, icon, institution_id, type, credit_limit, closing_day, due_day, network, initial_balance, include_in_dashboard_sum, show_in_dashboard) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *',
+      [userId, nameEncrypted, icon || null, institution_id || null, type || 'debit', credit_limit || null, closing_day || null, due_day || null, network || null, parsedInitialBalance, include_in_dashboard_sum !== false, show_in_dashboard !== false]
     );
 
     const row = result.rows[0];
@@ -111,6 +113,8 @@ export const createAccount = async (req: Request, res: Response) => {
       closing_day: row.closing_day,
       due_day: row.due_day,
       network: row.network,
+      include_in_dashboard_sum: row.include_in_dashboard_sum,
+      show_in_dashboard: row.show_in_dashboard,
       initial_balance: Number(row.initial_balance || 0),
       created_at: row.created_at
     });
@@ -124,7 +128,7 @@ export const updateAccount = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
     const { id } = req.params;
-    const { name, icon, institution_id, type, credit_limit, closing_day, due_day, network, initial_balance } = req.body;
+    const { name, icon, institution_id, type, credit_limit, closing_day, due_day, network, initial_balance, include_in_dashboard_sum, show_in_dashboard } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Account name is required' });
@@ -142,8 +146,8 @@ export const updateAccount = async (req: Request, res: Response) => {
     const nameEncrypted = encrypt(name);
     const parsedInitialBalance = initial_balance !== undefined && initial_balance !== null ? (parseFloat(initial_balance) || 0) : 0;
     const result = await query(
-      'UPDATE accounts SET name_encrypted = $1, icon = $2, institution_id = $3, type = $4, credit_limit = $5, closing_day = $6, due_day = $7, network = $8, initial_balance = $9 WHERE id = $10 AND user_id = $11 RETURNING *',
-      [nameEncrypted, icon || null, institution_id || null, type || 'debit', credit_limit || null, closing_day || null, due_day || null, network || null, parsedInitialBalance, id, userId]
+      'UPDATE accounts SET name_encrypted = $1, icon = $2, institution_id = $3, type = $4, credit_limit = $5, closing_day = $6, due_day = $7, network = $8, initial_balance = $9, include_in_dashboard_sum = $10, show_in_dashboard = $11 WHERE id = $12 AND user_id = $13 RETURNING *',
+      [nameEncrypted, icon || null, institution_id || null, type || 'debit', credit_limit || null, closing_day || null, due_day || null, network || null, parsedInitialBalance, include_in_dashboard_sum !== false, show_in_dashboard !== false, id, userId]
     );
 
     if (result.rowCount === 0) {
@@ -160,6 +164,8 @@ export const updateAccount = async (req: Request, res: Response) => {
       closing_day: row.closing_day,
       due_day: row.due_day,
       network: row.network,
+      include_in_dashboard_sum: row.include_in_dashboard_sum,
+      show_in_dashboard: row.show_in_dashboard,
       initial_balance: Number(row.initial_balance || 0),
       created_at: row.created_at
     });

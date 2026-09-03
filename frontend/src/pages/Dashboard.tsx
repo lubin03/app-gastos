@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { IonContent, IonPage, IonGrid, IonRow, IonCol, IonSpinner, IonIcon, useIonViewWillEnter, IonText, IonButton } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
-import { walletOutline, trendingUpOutline, trendingDownOutline, cardOutline } from 'ionicons/icons';
+import { walletOutline, trendingUpOutline, trendingDownOutline, cardOutline, eyeOutline, eyeOffOutline } from 'ionicons/icons';
 import { useAuth } from '../context/AuthContext';
 import { useFilter } from '../context/FilterContext';
 import { api } from '../services/api';
@@ -20,7 +20,7 @@ const generateColor = (str: string) => {
 };
 
 const CustomLegend = (props: any) => {
-  const { payload } = props;
+  const { payload, showValues } = props;
   return (
     <ul style={{ listStyle: 'none', padding: 0, margin: '15px 0 0 0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
       {payload.map((entry: any, index: number) => (
@@ -30,7 +30,7 @@ const CustomLegend = (props: any) => {
             <span style={{ fontSize: '14px', color: 'var(--ion-text-color)' }}>{entry.value}</span>
           </div>
           <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--ion-text-color)' }}>
-            ${entry.payload.value.toLocaleString('en-US', { minimumFractionDigits: 2 })}
+            {showValues ? `$${entry.payload.value.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '****'}
           </span>
         </li>
       ))}
@@ -43,6 +43,9 @@ const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const { startDate, endDate } = useFilter();
   const [loading, setLoading] = useState(true);
+  const [showValues, setShowValues] = useState(() => {
+    return localStorage.getItem('dashboard_show_values') !== 'false';
+  });
   const [dashboardAccounts, setDashboardAccounts] = useState<any[]>([]);
   const [balance, setBalance] = useState({ 
     bankTotal: 0, 
@@ -62,6 +65,17 @@ const Dashboard: React.FC = () => {
     fetchCreditCards();
   });
 
+  const togglePrivacy = () => {
+    const newValue = !showValues;
+    setShowValues(newValue);
+    localStorage.setItem('dashboard_show_values', String(newValue));
+  };
+
+  const formatValue = (value: number, prefix: string = '$') => {
+    if (!showValues) return '****';
+    return `${prefix}${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
   // Re-fetch when dates change
   React.useEffect(() => {
     fetchDashboardData();
@@ -70,7 +84,7 @@ const Dashboard: React.FC = () => {
   const fetchCreditCards = async () => {
     try {
       const data = await api.get('/credit-cards');
-      setCreditCards(data.slice(0, 3)); // Only top 3
+      setCreditCards(data.filter((c: any) => c.show_in_dashboard !== false).slice(0, 3)); // Only top 3
     } catch (err) {
       console.error('Failed to load credit cards for dashboard', err);
     }
@@ -110,8 +124,11 @@ const Dashboard: React.FC = () => {
             <IonText color="medium">
               <p style={{ margin: 0, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>{t('dashboard.welcome')}</p>
             </IonText>
-            <h1 style={{ margin: '4px 0 20px 0', fontWeight: 700, fontSize: '30px' }} className="text-gradient">
-              {user?.name || user?.email}
+            <h1 style={{ margin: '4px 0 20px 0', fontWeight: 700, fontSize: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} className="text-gradient">
+              <span>{user?.name || user?.email}</span>
+              <IonButton fill="clear" onClick={togglePrivacy} style={{ margin: 0 }}>
+                <IonIcon icon={showValues ? eyeOutline : eyeOffOutline} style={{ fontSize: '24px', color: 'var(--ion-text-color)' }} />
+              </IonButton>
             </h1>
           </div>
           
@@ -125,7 +142,7 @@ const Dashboard: React.FC = () => {
                     <IonIcon icon={walletOutline} style={{ position: 'absolute', right: '-20px', bottom: '-20px', fontSize: '120px', opacity: 0.15 }} />
                     <p style={{ margin: 0, opacity: 0.85, fontSize: '14px', fontWeight: 500 }}>{t('dashboard.bankBalance')}</p>
                     <h2 style={{ margin: '8px 0 0 0', fontSize: '38px', fontWeight: 700 }}>
-                      ${balance.bankTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatValue(balance.bankTotal)}
                     </h2>
                   </div>
                 </IonCol>
@@ -135,7 +152,7 @@ const Dashboard: React.FC = () => {
                     <IonIcon icon={cardOutline} style={{ position: 'absolute', right: '-10px', bottom: '-10px', fontSize: '100px', opacity: 0.15 }} />
                     <p style={{ margin: 0, opacity: 0.85, fontSize: '14px', fontWeight: 500 }}>{t('dashboard.ccDebt')}</p>
                     <h2 style={{ margin: '8px 0 0 0', fontSize: '32px', fontWeight: 700 }}>
-                      ${balance.ccDebt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatValue(balance.ccDebt)}
                     </h2>
                   </div>
                 </IonCol>
@@ -145,7 +162,7 @@ const Dashboard: React.FC = () => {
                     <IonIcon icon={trendingUpOutline} style={{ color: '#10b981', fontSize: '24px', marginBottom: '6px' }} />
                     <p style={{ margin: 0, fontSize: '12px', color: '#10b981', fontWeight: 600 }}>{t('dashboard.income')}</p>
                     <h3 style={{ margin: '4px 0 0 0', fontSize: '20px', fontWeight: 700, color: '#10b981' }}>
-                      ${balance.income.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatValue(balance.income)}
                     </h3>
                   </div>
                 </IonCol>
@@ -155,14 +172,14 @@ const Dashboard: React.FC = () => {
                     <IonIcon icon={trendingDownOutline} style={{ color: '#f43f5e', fontSize: '24px', marginBottom: '6px' }} />
                     <p style={{ margin: 0, fontSize: '12px', color: '#f43f5e', fontWeight: 600 }}>{t('dashboard.expenses')}</p>
                     <h3 style={{ margin: '4px 0 0 0', fontSize: '20px', fontWeight: 700, color: '#f43f5e' }}>
-                      ${balance.expense.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      {formatValue(balance.expense)}
                     </h3>
                   </div>
                 </IonCol>
               </IonRow>
 
               {/* Accounts Balances Section for Selected Period */}
-              {dashboardAccounts.filter(a => a.type !== 'credit_card' && !a.is_archived).length > 0 && (
+              {dashboardAccounts.filter(a => a.type !== 'credit_card' && !a.is_archived && a.show_in_dashboard !== false).length > 0 && (
                 <IonRow className="ion-margin-top">
                   <IonCol size="12">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
@@ -172,7 +189,7 @@ const Dashboard: React.FC = () => {
                       </IonButton>
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(170px, 1fr))', gap: '12px' }}>
-                      {dashboardAccounts.filter(a => a.type !== 'credit_card' && !a.is_archived).slice(0, 6).map(acc => {
+                      {dashboardAccounts.filter(a => a.type !== 'credit_card' && !a.is_archived && a.show_in_dashboard !== false).slice(0, 6).map(acc => {
                         const bal = Number(acc.balance || 0);
                         const isNeg = bal < 0;
                         return (
@@ -189,7 +206,7 @@ const Dashboard: React.FC = () => {
                               </span>
                             </div>
                             <div style={{ fontSize: '16px', fontWeight: 700, color: isNeg ? 'var(--ion-color-danger, #ef4444)' : 'var(--ion-color-success, #10b981)' }}>
-                              {isNeg ? '-' : ''}${Math.abs(bal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {formatValue(Math.abs(bal), isNeg ? '-$' : '$')}
                             </div>
                           </div>
                         );
@@ -216,14 +233,14 @@ const Dashboard: React.FC = () => {
                           <div key={card.id} className="glass-card ion-padding" style={{ borderRadius: '16px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                               <span style={{ fontWeight: 600 }}>{card.name}</span>
-                              <span style={{ fontWeight: 700, color: 'var(--ion-color-danger)' }}>${card.consumed.toLocaleString()}</span>
+                              <span style={{ fontWeight: 700, color: 'var(--ion-color-danger)' }}>{formatValue(card.consumed)}</span>
                             </div>
                             <div style={{ width: '100%', height: '6px', background: 'rgba(255,255,255,0.08)', borderRadius: '3px', overflow: 'hidden' }}>
                               <div style={{ width: `${progress * 100}%`, height: '100%', background: 'var(--ion-color-primary)', borderRadius: '3px' }}></div>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--ion-color-medium)', marginTop: '8px' }}>
-                              <span>Límite: ${card.limit.toLocaleString()}</span>
-                              <span>Disponible: ${(card.available).toLocaleString()}</span>
+                              <span>Límite: {showValues ? `$${card.limit.toLocaleString()}` : '****'}</span>
+                              <span>Disponible: {showValues ? `$${(card.available).toLocaleString()}` : '****'}</span>
                             </div>
                           </div>
                         );
@@ -258,17 +275,17 @@ const Dashboard: React.FC = () => {
                                   <Cell key={`cell-${index}`} fill={generateColor(entry.name)} />
                                 ))}
                                 <Label 
-                                  value={`$${(balance.expense / 1000).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`} 
+                                  value={showValues ? `$${(balance.expense / 1000).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k` : '****'} 
                                   position="center" 
                                   fill="var(--ion-text-color)" 
                                   style={{ fontSize: '14px', fontWeight: 'bold' }} 
                                 />
                               </Pie>
-                              <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
+                              <Tooltip formatter={(value: any) => showValues ? `$${Number(value).toLocaleString()}` : '****'} />
                             </PieChart>
                           </ResponsiveContainer>
                         </div>
-                        <CustomLegend payload={balance.expensesByCategory.map((entry) => ({
+                        <CustomLegend showValues={showValues} payload={balance.expensesByCategory.map((entry) => ({
                           value: entry.name,
                           payload: { value: entry.value }
                         }))} />
@@ -304,17 +321,17 @@ const Dashboard: React.FC = () => {
                                   <Cell key={`cell-${index}`} fill={generateColor(entry.name)} />
                                 ))}
                                 <Label 
-                                  value={`$${(balance.income / 1000).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k`} 
+                                  value={showValues ? `$${(balance.income / 1000).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 1 })}k` : '****'} 
                                   position="center" 
                                   fill="var(--ion-text-color)" 
                                   style={{ fontSize: '14px', fontWeight: 'bold' }} 
                                 />
                               </Pie>
-                              <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
+                              <Tooltip formatter={(value: any) => showValues ? `$${Number(value).toLocaleString()}` : '****'} />
                             </PieChart>
                           </ResponsiveContainer>
                         </div>
-                        <CustomLegend payload={balance.incomeByCategory.map((entry) => ({
+                        <CustomLegend showValues={showValues} payload={balance.incomeByCategory.map((entry) => ({
                           value: entry.name,
                           payload: { value: entry.value }
                         }))} />
@@ -336,8 +353,8 @@ const Dashboard: React.FC = () => {
                           <BarChart data={balance.monthlyBalance}>
                             <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.2} stroke="var(--ion-color-medium)" />
                             <XAxis dataKey="name" axisLine={false} tickLine={false} stroke="var(--ion-color-medium)" tick={{ fill: 'var(--ion-color-medium)' }} />
-                            <YAxis axisLine={false} tickLine={false} stroke="var(--ion-color-medium)" tick={{ fill: 'var(--ion-color-medium)' }} tickFormatter={(value) => `$${value}`} />
-                            <Tooltip formatter={(value: any) => `$${Number(value).toLocaleString()}`} />
+                            <YAxis axisLine={false} tickLine={false} stroke="var(--ion-color-medium)" tick={{ fill: 'var(--ion-color-medium)' }} tickFormatter={(value) => showValues ? `$${value}` : '****'} />
+                            <Tooltip formatter={(value: any) => showValues ? `$${Number(value).toLocaleString()}` : '****'} />
                             <Legend wrapperStyle={{ color: 'var(--ion-text-color)' }} />
                             <Bar dataKey="income" name="Ingresos" fill="#10b981" radius={[4, 4, 0, 0]} />
                             <Bar dataKey="expense" name="Gastos" fill="#f43f5e" radius={[4, 4, 0, 0]} />

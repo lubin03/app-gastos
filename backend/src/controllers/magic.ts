@@ -55,7 +55,7 @@ Instructions:
 5. Determine a suitable "category_name". If it perfectly matches an Existing Category, use it. If not, invent a short, logical category name (e.g. "Comida", "Transporte", "Sueldo").
 6. Determine if it's "paid" (boolean). (Credit card expenses are usually paid=false if it's debt, but just default to true for debit, false for credit card).
 7. Transcribe the user's audio exactly into the "transcript" field (if image, just summarize the items bought). CRITICAL: If the input is unintelligible, silent, or if the image does NOT contain a valid receipt/invoice, you MUST write "SILENCE" (for audio) or "INVALID_IMAGE" (for images) in the transcript field. DO NOT invent or guess transactions. NEVER output default values like 25000.
-8. The current date for the user is ${localDate || new Date().toISOString().split('T')[0]}. Determine the exact date of the transaction in "YYYY-MM-DD" format. If the user says "ayer" or "ayer gasté", calculate the date relative to this current date. If not mentioned, use this current date.
+8. The current date for the user is ${localDate || new Date().toISOString().split('T')[0]}. Determine the exact date of the transaction in "YYYY-MM-DD" format. If the user says "ayer" or "el lunes", calculate the date relative to this current date. If it's an image, extract the date printed on the receipt/ticket. If no date is mentioned or visible, use this current date.
 9. Return ONLY a valid raw JSON object, without markdown formatting like \`\`\`json.
 
 Format exactly like this:

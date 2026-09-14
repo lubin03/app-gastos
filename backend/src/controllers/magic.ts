@@ -6,7 +6,7 @@ import { encrypt, decrypt } from '../utils/crypto';
 export const createMagicTransaction = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const { text, audioBase64, imageBase64, mimeType } = req.body;
+    const { text, audioBase64, imageBase64, mimeType, localDate } = req.body;
 
     if (!text && !audioBase64 && !imageBase64) {
       return res.status(400).json({ error: 'Text, Audio, or Image is required' });
@@ -55,7 +55,8 @@ Instructions:
 5. Determine a suitable "category_name". If it perfectly matches an Existing Category, use it. If not, invent a short, logical category name (e.g. "Comida", "Transporte", "Sueldo").
 6. Determine if it's "paid" (boolean). (Credit card expenses are usually paid=false if it's debt, but just default to true for debit, false for credit card).
 7. Transcribe the user's audio exactly into the "transcript" field (if image, just summarize the items bought). CRITICAL: If the input is unintelligible, silent, or if the image does NOT contain a valid receipt/invoice, you MUST write "SILENCE" (for audio) or "INVALID_IMAGE" (for images) in the transcript field. DO NOT invent or guess transactions. NEVER output default values like 25000.
-8. Return ONLY a valid raw JSON object, without markdown formatting like \`\`\`json.
+8. The current date for the user is ${localDate || new Date().toISOString().split('T')[0]}. Determine the exact date of the transaction in "YYYY-MM-DD" format. If the user says "ayer" or "ayer gasté", calculate the date relative to this current date. If not mentioned, use this current date.
+9. Return ONLY a valid raw JSON object, without markdown formatting like \`\`\`json.
 
 Format exactly like this:
 {
@@ -65,6 +66,7 @@ Format exactly like this:
   "account_id": "uuid-here",
   "category_name": "Comida",
   "paid": true,
+  "date": "${localDate || new Date().toISOString().split('T')[0]}",
   "transcript": "Ayer gasté mil quinientos en una hamburguesa"
 }
 `;
@@ -150,7 +152,8 @@ Format exactly like this:
     }
 
     // 7. Insert Transaction
-    const dateStr = new Date().toISOString().split('T')[0]; // Current date
+    const fallbackDate = localDate || new Date().toISOString().split('T')[0];
+    const dateStr = parsed.date ? parsed.date : fallbackDate;
     const descEncrypted = parsed.description ? encrypt(parsed.description) : null;
     const account = accounts.find(a => a.id === parsed.account_id) || accounts[0];
     const isPaid = account.type === 'credit_card' ? false : true;

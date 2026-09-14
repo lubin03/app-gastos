@@ -11,6 +11,7 @@ import DateFilter from '../components/DateFilter';
 import { useFilter } from '../context/FilterContext';
 import { colorWandOutline, arrowBackOutline } from 'ionicons/icons';
 import { useTranslation } from 'react-i18next';
+import { Filesystem } from '@capacitor/filesystem';
 
 const Transactions: React.FC = () => {
   const history = useHistory();
@@ -22,6 +23,8 @@ const Transactions: React.FC = () => {
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [tab, setTab] = useState('all');
+  const [sharedImageBase64, setSharedImageBase64] = useState<string | null>(null);
+  const [sharedMimeType, setSharedMimeType] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
 
@@ -31,18 +34,49 @@ const Transactions: React.FC = () => {
   const sharedText = searchParams.get('text') || searchParams.get('title') || searchParams.get('url');
 
   useEffect(() => {
-    if (sharedText) {
-      setShowMagic(true);
-      // Clean up URL so it doesn't re-trigger on refresh
-      const newParams = new URLSearchParams(location.search);
-      newParams.delete('text');
-      newParams.delete('title');
-      newParams.delete('url');
-      history.replace({
-        pathname: location.pathname,
-        search: newParams.toString()
-      });
-    }
+    const handleShareData = async () => {
+      const stored = localStorage.getItem('pendingShare');
+      if (stored) {
+        localStorage.removeItem('pendingShare');
+        try {
+          const data = JSON.parse(stored);
+          if (data.files && data.files.length > 0) {
+            const file = data.files[0];
+            if (file.uri) {
+              try {
+                const result = await Filesystem.readFile({ path: file.uri });
+                setSharedImageBase64(result.data as string);
+                setSharedMimeType(file.mimeType || 'image/jpeg');
+                setShowMagic(true);
+                return;
+              } catch (e) {
+                console.error('Error reading shared file uri', e);
+              }
+            }
+          }
+          if (data.texts && data.texts.length > 0) {
+            const text = data.texts[0];
+            history.push(`/app/transactions?text=${encodeURIComponent(text)}`);
+            setShowMagic(true);
+          }
+        } catch (e) {
+          console.error('Error parsing pending share', e);
+        }
+      } else if (sharedText) {
+        setShowMagic(true);
+        // Clean up URL so it doesn't re-trigger on refresh
+        const newParams = new URLSearchParams(location.search);
+        newParams.delete('text');
+        newParams.delete('title');
+        newParams.delete('url');
+        history.replace({
+          pathname: location.pathname,
+          search: newParams.toString()
+        });
+      }
+    };
+
+    handleShareData();
   }, [sharedText, location.pathname, history, location.search]);
 
   const loadTransactions = async () => {
@@ -231,12 +265,20 @@ const Transactions: React.FC = () => {
         
         <MagicModal
           isOpen={showMagic}
-          onClose={() => setShowMagic(false)}
+          onClose={() => {
+            setShowMagic(false);
+            setSharedImageBase64(null);
+            setSharedMimeType(null);
+          }}
           onSuccess={() => {
             setShowMagic(false);
+            setSharedImageBase64(null);
+            setSharedMimeType(null);
             loadTransactions();
           }}
           initialText={sharedText || undefined}
+          initialImageBase64={sharedImageBase64 || undefined}
+          initialMimeType={sharedMimeType || undefined}
         />
       </IonContent>
     </IonPage>

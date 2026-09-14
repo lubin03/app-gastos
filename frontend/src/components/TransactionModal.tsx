@@ -215,6 +215,20 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
             ))}
           </IonSelect>
         </IonItem>
+        <IonButton fill="clear" size="small" onClick={async () => {
+          const name = window.prompt('Nombre de la nueva categoría:');
+          if (name) {
+            try {
+              const res = await api.post('/categories', { name, type, parent_id: null });
+              const newCats = await api.get('/categories');
+              setCategories(newCats);
+              const created = newCats.find((c: any) => c.name.toLowerCase() === name.toLowerCase() && c.type === type);
+              if (created) setCategoryId(created.id);
+            } catch (err) {
+              console.error(err);
+            }
+          }
+        }}>+ Crear Categoría</IonButton>
         <div style={{ position: 'relative', zIndex: 10 }}>
           <IonItem className="glass-input" lines="none">
             <IonInput 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Redirect, Route } from 'react-router-dom';
+import { Redirect, Route, useHistory } from 'react-router-dom';
 import {
   IonApp,
   IonIcon,
@@ -16,6 +16,7 @@ import { home, list, card, pieChart, pricetags, analyticsOutline, barChartOutlin
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { FilterProvider } from './context/FilterContext';
 import { useTranslation } from 'react-i18next';
+import { CapacitorShareTarget } from '@capgo/capacitor-share-target';
 
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -116,9 +117,26 @@ const PrivateRoutes: React.FC = () => {
   );
 };
 
+const ShareHandler: React.FC = () => {
+  const history = useHistory();
+  React.useEffect(() => {
+    const listener = CapacitorShareTarget.addListener('shareReceived', (data: any) => {
+      console.log('Share received:', data);
+      localStorage.setItem('pendingShare', JSON.stringify(data));
+      setTimeout(() => {
+        history.push('/app/transactions?share=' + Date.now());
+      }, 300);
+    });
+    // @ts-ignore
+    return () => { listener.then(l => l.remove()).catch(console.error); };
+  }, [history]);
+  return null;
+};
+
 const AppRoutes: React.FC = () => {
   return (
     <IonReactRouter>
+      <ShareHandler />
       <IonRouterOutlet>
         <Route exact path="/login" component={Login} />
         <Route exact path="/register" component={Register} />
@@ -135,14 +153,16 @@ const AppRoutes: React.FC = () => {
   );
 };
 
-const App: React.FC = () => (
-  <IonApp>
-    <AuthProvider>
-      <FilterProvider>
-        <AppRoutes />
-      </FilterProvider>
-    </AuthProvider>
-  </IonApp>
-);
+const App: React.FC = () => {
+  return (
+    <IonApp>
+      <AuthProvider>
+        <FilterProvider>
+          <AppRoutes />
+        </FilterProvider>
+      </AuthProvider>
+    </IonApp>
+  );
+};
 
 export default App;

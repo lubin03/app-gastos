@@ -227,6 +227,23 @@ const Profile: React.FC = () => {
             </IonButton>
           </div>
 
+          {/* Administration Section */}
+          <div className="glass-card ion-padding ion-margin-bottom">
+            <h2 style={{ marginTop: 0, fontWeight: 700, fontSize: '1.2rem' }}>{t('profile.administration', 'Administración')}</h2>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '20px' }}>
+              {t('profile.adminInstruction', 'Gestiona los datos principales de tu cuenta.')}
+            </p>
+            <IonButton 
+              expand="block" 
+              shape="round"
+              routerLink="/app/categories"
+              fill="outline"
+              style={{ height: '50px', fontWeight: 600, fontSize: '16px', color: 'var(--ion-color-primary)' }}
+            >
+              {t('profile.manageCategories', 'Gestionar Categorías')}
+            </IonButton>
+          </div>
+
           {/* Danger Zone */}
           <div className="glass-card ion-padding ion-margin-bottom" style={{ border: '1px solid rgba(239, 68, 68, 0.3)' }}>
             <h2 style={{ marginTop: 0, fontWeight: 700, fontSize: '1.2rem', color: 'var(--ion-color-danger)' }}>Zona de Peligro</h2>

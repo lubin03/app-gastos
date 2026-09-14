@@ -9,9 +9,11 @@ interface MagicModalProps {
   onClose: () => void;
   onSuccess: () => void;
   initialText?: string;
+  initialImageBase64?: string;
+  initialMimeType?: string;
 }
 
-const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, initialText }) => {
+const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, initialText, initialImageBase64, initialMimeType }) => {
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -22,10 +24,16 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
-    if (isOpen && initialText) {
-      setText(initialText);
+    if (isOpen) {
+      if (initialText) {
+        setText(initialText);
+      }
+      if (initialImageBase64 && initialMimeType) {
+        // Automatically submit the shared image to API
+        submitToApi({ imageBase64: initialImageBase64, mimeType: initialMimeType });
+      }
     }
-  }, [isOpen, initialText]);
+  }, [isOpen, initialText, initialImageBase64, initialMimeType]);
 
   const startRecording = async () => {
     try {
@@ -130,7 +138,8 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
   const submitToApi = async (payload: { text?: string; audioBase64?: string; imageBase64?: string; mimeType?: string }) => {
     setLoading(true);
     try {
-      const res = await api.post('/transactions/magic', payload);
+      const localDate = new Date().toLocaleDateString('en-CA'); // Gets YYYY-MM-DD in local time
+      const res = await api.post('/transactions/magic', { ...payload, localDate });
       alert(`¡Mágicamente guardado!\n${res.type === 'expense' ? 'Gasto' : 'Ingreso'} de $${res.amount}\nCategoría: ${res._magic_category_name}\nCuenta: ${res._magic_account_name}`);
       setText('');
       onSuccess();
@@ -225,13 +234,14 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
                 onClick={() => fileInputRef.current?.click()}
                 disabled={loading}
                 style={{ 
-                  height: '60px', 
-                  width: '60px',
+                  height: '76px', 
+                  width: '76px',
                   '--background': 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)',
                   fontWeight: 600,
+                  boxShadow: '0 8px 16px rgba(16, 185, 129, 0.3)'
                 }}
               >
-                <IonIcon icon={imageOutline} style={{ fontSize: '24px' }} />
+                <IonIcon icon={imageOutline} style={{ fontSize: '32px' }} />
               </IonButton>
             </div>
           )}

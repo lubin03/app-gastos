@@ -36,6 +36,7 @@ const CreditCards: React.FC = () => {
   const [fundingAccounts, setFundingAccounts] = useState<any[]>([]);
   const [selectedFundingAccount, setSelectedFundingAccount] = useState<string>('');
   const [payAmount, setPayAmount] = useState<string>('');
+  const [payDate, setPayDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   useIonViewWillEnter(() => {
     fetchCards();
@@ -127,6 +128,7 @@ const CreditCards: React.FC = () => {
         invoice_id: selectedInvoiceToPay,
         funding_account_id: selectedFundingAccount,
         amount: parseFloat(payAmount),
+        date: payDate,
         description: `Pago Tarjeta ${selectedCard.name}`
       });
       setShowPayModal(false);
@@ -236,7 +238,23 @@ const CreditCards: React.FC = () => {
                   <span>Pago: día {selectedCard?.due_day || '--'}</span>
                 </div>
 
-                <IonButton expand="block" shape="round" color="light" className="ion-margin-top" style={{ fontWeight: 600, color: '#0f172a' }} onClick={() => setShowPayModal(true)} disabled={selectedCard?.consumed === 0}>
+                <IonButton 
+                  expand="block" 
+                  shape="round" 
+                  color="light" 
+                  className="ion-margin-top" 
+                  style={{ fontWeight: 600, color: '#0f172a' }} 
+                  onClick={() => {
+                    if (currentInvoice) {
+                      setSelectedInvoiceToPay(currentInvoice.id);
+                      const unpaid = Math.max(0, currentInvoice.total_amount - currentInvoice.paid_amount);
+                      setPayAmount(unpaid > 0 ? unpaid.toString() : (selectedCard?.consumed || 0).toString());
+                    }
+                    setPayDate(new Date().toISOString().split('T')[0]);
+                    setShowPayModal(true);
+                  }} 
+                  disabled={selectedCard?.consumed === 0 && (!currentInvoice || currentInvoice.total_amount === 0)}
+                >
                   Pagar Factura
                 </IonButton>
               </div>
@@ -265,12 +283,13 @@ const CreditCards: React.FC = () => {
                         </IonItem>
                         
                         <div className="ion-padding" slot="content" style={{ background: 'transparent' }}>
-                          {inv.status !== 'paid' && !inv.is_current && (inv.total_amount === 0 || inv.paid_amount < inv.total_amount) && (
+                          {inv.status !== 'paid' && (inv.total_amount === 0 || inv.paid_amount < inv.total_amount) && (
                             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
                               <IonButton size="small" shape="round" onClick={() => {
                                 setSelectedInvoiceToPay(inv.id);
                                 const unpaid = Math.max(0, inv.total_amount - inv.paid_amount);
                                 setPayAmount(unpaid.toString());
+                                setPayDate(new Date().toISOString().split('T')[0]);
                                 setShowPayModal(true);
                               }}>
                                 Pagar esta factura
@@ -337,6 +356,10 @@ const CreditCards: React.FC = () => {
 
               <IonItem className="glass-input" lines="none">
                 <IonInput type="number" value={payAmount} onIonInput={e => setPayAmount(e.detail.value!)} label="Monto a Pagar" labelPlacement="floating" />
+              </IonItem>
+
+              <IonItem className="glass-input" lines="none">
+                <IonInput type="date" value={payDate} onIonInput={e => setPayDate(e.detail.value!)} label="Fecha de Pago" labelPlacement="floating" />
               </IonItem>
 
               <IonButton expand="block" shape="round" className="ion-margin-top" style={{ height: '50px', '--background': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)', fontWeight: 600, fontSize: '16px', marginTop: '24px' }} onClick={handlePayInvoice}>

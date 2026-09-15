@@ -14,17 +14,19 @@ export const FilterProvider: React.FC<{ children: React.ReactNode }> = ({ childr
   const getInitialDates = () => {
     const savedStart = localStorage.getItem('app_filter_startDate');
     const savedEnd = localStorage.getItem('app_filter_endDate');
-    if (savedStart && savedEnd) {
+    if (savedStart && savedEnd && /^\d{4}-\d{2}-\d{2}$/.test(savedStart) && /^\d{4}-\d{2}-\d{2}$/.test(savedEnd)) {
       return { startDate: savedStart, endDate: savedEnd };
     }
 
     const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0); // last day of month
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const y = now.getFullYear();
+    const m = now.getMonth() + 1;
+    const lastDay = new Date(y, m, 0).getDate();
     
     return {
-      startDate: start.toISOString().split('T')[0],
-      endDate: end.toISOString().split('T')[0]
+      startDate: `${y}-${pad(m)}-01`,
+      endDate: `${y}-${pad(m)}-${pad(lastDay)}`
     };
   };
 

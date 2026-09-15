@@ -212,8 +212,17 @@ export const payCreditCard = async (req: Request, res: Response) => {
     const { id } = req.params; // Credit card account ID
     const { invoice_id, funding_account_id, amount, category_id, date, description } = req.body;
 
-    if (!invoice_id) {
-      return res.status(400).json({ error: 'invoice_id is required' });
+    let targetInvoiceId = invoice_id;
+    if (!targetInvoiceId) {
+      const openInv = await query(
+        "SELECT id FROM credit_card_invoices WHERE account_id = $1 AND status != 'paid' ORDER BY year DESC, month DESC LIMIT 1",
+        [id]
+      );
+      if (openInv.rows.length > 0) {
+        targetInvoiceId = openInv.rows[0].id;
+      } else {
+        return res.status(400).json({ error: 'invoice_id is required' });
+      }
     }
 
     // Validate both accounts exist and belong to user
@@ -224,7 +233,7 @@ export const payCreditCard = async (req: Request, res: Response) => {
     if (fundResult.rowCount === 0) return res.status(404).json({ error: 'Funding account not found' });
 
     // Validate invoice exists
-    const invResult = await query('SELECT id FROM credit_card_invoices WHERE id = $1 AND account_id = $2', [invoice_id, id]);
+    const invResult = await query('SELECT id FROM credit_card_invoices WHERE id = $1 AND account_id = $2', [targetInvoiceId, id]);
     if (invResult.rowCount === 0) return res.status(404).json({ error: 'Invoice not found' });
 
     // 1. Mark all unpaid expense transactions on the specific invoice as paid
@@ -232,21 +241,22 @@ export const payCreditCard = async (req: Request, res: Response) => {
       UPDATE transactions 
       SET paid = TRUE 
       WHERE invoice_id = $1 AND paid = FALSE AND type = 'expense'
-    `, [invoice_id]);
+    `, [targetInvoiceId]);
 
     // Update specific invoice status to paid
     await query(`
       UPDATE credit_card_invoices 
       SET status = 'paid'
       WHERE id = $1
-    `, [invoice_id]);
+    `, [targetInvoiceId]);
 
     // 2. Create the payment expense on the funding account
     const descEncrypted = description ? encrypt(description) : null;
+    const paymentDate = date ? (date.includes('T') ? date : `${date}T12:00:00Z`) : new Date().toISOString();
     await query(`
       INSERT INTO transactions (account_id, amount, category_id, date, description_encrypted, type, paid)
       VALUES ($1, $2, $3, $4, $5, $6, TRUE)
-    `, [funding_account_id, amount, category_id, date || new Date().toISOString(), descEncrypted, 'expense']);
+    `, [funding_account_id, amount, category_id, paymentDate, descEncrypted, 'expense']);
 
     res.status(200).json({ message: 'Credit card paid successfully' });
   } catch (error) {

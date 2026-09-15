@@ -6,7 +6,6 @@ import { computeInvoicePeriod, getOrCreateInvoice } from '../utils/billingCycle'
 export const getTransactions = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const { startDate, endDate } = req.query;
 
     let queryStr = `
       SELECT t.*, a.name_encrypted as account_name_encrypted,
@@ -22,9 +21,18 @@ export const getTransactions = async (req: Request, res: Response) => {
     `;
     const params: any[] = [userId];
 
+    const startDate = req.query.startDate ? String(req.query.startDate).trim() : null;
+    const endDate = req.query.endDate ? String(req.query.endDate).trim() : null;
+    const accountId = req.query.accountId ? String(req.query.accountId).trim() : null;
+
     if (startDate && endDate) {
-      queryStr += ` AND t.date >= $2 AND t.date <= $3`;
       params.push(startDate, endDate);
+      queryStr += ` AND t.date >= $${params.length - 1}::date AND t.date < $${params.length}::date + interval '1 day'`;
+    }
+
+    if (accountId) {
+      params.push(accountId);
+      queryStr += ` AND (t.account_id = $${params.length} OR t.destination_account_id = $${params.length})`;
     }
 
     queryStr += ` ORDER BY t.date DESC`;

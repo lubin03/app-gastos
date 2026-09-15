@@ -66,6 +66,7 @@ const Accounts: React.FC = () => {
   const [payAmount, setPayAmount] = useState('');
   const [payFundingAccountId, setPayFundingAccountId] = useState('');
   const [payCategoryId, setPayCategoryId] = useState('');
+  const [payDate, setPayDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   const loadData = async () => {
     try {
@@ -164,6 +165,7 @@ const Accounts: React.FC = () => {
         funding_account_id: payFundingAccountId,
         amount: parseFloat(payAmount),
         category_id: payCategoryId,
+        date: payDate,
         description: 'Pago de tarjeta de crédito'
       });
       setPayAmount('');
@@ -527,6 +529,10 @@ const Accounts: React.FC = () => {
 
               <IonItem className="glass-input" lines="none">
                 <IonInput type="number" value={payAmount} onIonInput={e => setPayAmount(e.detail.value!)} label={t('accounts.payAmount')} labelPlacement="floating" />
+              </IonItem>
+
+              <IonItem className="glass-input" lines="none">
+                <IonInput type="date" value={payDate} onIonInput={e => setPayDate(e.detail.value!)} label={t('common.date', 'Fecha')} labelPlacement="floating" />
               </IonItem>
 
               <IonButton expand="block" shape="round" className="ion-margin-top" style={{ height: '50px', '--background': 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)', fontWeight: 600, fontSize: '16px', marginTop: '24px' }} onClick={handlePayCard}>

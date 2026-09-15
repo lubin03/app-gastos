@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IonContent, IonPage, IonFab, IonFabButton, IonIcon, IonSpinner, useIonViewWillEnter, IonButton, IonButtons, IonSegment, IonSegmentButton, IonLabel } from '@ionic/react';
+import { IonContent, IonPage, IonFab, IonFabButton, IonIcon, IonSpinner, useIonViewWillEnter, IonButton, IonButtons, IonSegment, IonSegmentButton, IonLabel, IonItem, IonSelect, IonSelectOption } from '@ionic/react';
 import { useLocation, useHistory } from 'react-router-dom';
 import { add, downloadOutline, pushOutline } from 'ionicons/icons';
 import { api } from '../services/api';
@@ -17,6 +17,7 @@ const Transactions: React.FC = () => {
   const history = useHistory();
   const { startDate, endDate } = useFilter();
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [accounts, setAccounts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [showMagic, setShowMagic] = useState(false);
@@ -81,16 +82,22 @@ const Transactions: React.FC = () => {
 
   const loadTransactions = async () => {
     try {
+      setLoading(true);
+      const url = filterAccountId 
+        ? `/transactions?startDate=${startDate}&endDate=${endDate}&accountId=${filterAccountId}`
+        : `/transactions?startDate=${startDate}&endDate=${endDate}`;
+
       const [txData, catData, accData] = await Promise.all([
-        api.get(`/transactions?startDate=${startDate}&endDate=${endDate}`),
+        api.get(url),
         api.get('/categories'),
         api.get('/accounts')
       ]);
+      setAccounts(accData);
       const ccIds = accData.filter((a: any) => a.type === 'credit_card').map((a: any) => a.id);
 
       let filteredTx = txData;
       if (filterAccountId) {
-        filteredTx = filteredTx.filter((t: any) => t.account_id === filterAccountId);
+        filteredTx = filteredTx.filter((t: any) => t.account_id === filterAccountId || t.destination_account_id === filterAccountId);
       }
 
       const enriched = filteredTx.map((t: any) => {
@@ -112,13 +119,18 @@ const Transactions: React.FC = () => {
     }
   };
 
+  const loadTransactionsRef = React.useRef(loadTransactions);
+  React.useEffect(() => {
+    loadTransactionsRef.current = loadTransactions;
+  });
+
   useIonViewWillEnter(() => {
-    loadTransactions();
+    loadTransactionsRef.current();
   });
 
   React.useEffect(() => {
     loadTransactions();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, location.search]);
 
   const handleExport = async () => {
     try {
@@ -180,6 +192,32 @@ const Transactions: React.FC = () => {
       <DateFilter />
       <IonContent>
         <div className="app-container">
+          <div className="ion-padding-horizontal" style={{ marginBottom: '10px' }}>
+            <IonItem className="glass-input" lines="none" style={{ borderRadius: '16px' }}>
+              <IonSelect 
+                value={filterAccountId || ''} 
+                onIonChange={e => {
+                  const val = e.detail.value;
+                  if (val) {
+                    history.push(`/app/transactions?accountId=${val}`);
+                  } else {
+                    history.push('/app/transactions');
+                  }
+                }}
+                label="Filtrar por Cuenta"
+                labelPlacement="floating"
+                interface="popover"
+                style={{ width: '100%' }}
+              >
+                <IonSelectOption value="">Todas las Cuentas</IonSelectOption>
+                {accounts.map(acc => (
+                  <IonSelectOption key={acc.id} value={acc.id}>
+                    {acc.name} {acc.type === 'credit_card' ? '(Tarjeta)' : ''}
+                  </IonSelectOption>
+                ))}
+              </IonSelect>
+            </IonItem>
+          </div>
           <div style={{ padding: '0 16px 16px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {filterAccountId ? (
               <IonButton size="small" fill="clear" shape="round" onClick={() => history.push('/app/accounts')} style={{ color: 'var(--ion-color-primary)', fontWeight: 600 }}>

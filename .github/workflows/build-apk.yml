@@ -35,6 +35,8 @@ jobs:
 
       - name: Build frontend project
         working-directory: ./frontend
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
         run: pnpm run build
 
       - name: Sync Capacitor Android

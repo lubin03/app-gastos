@@ -85,6 +85,14 @@ ion-alert .alert-wrapper {
 .alert-title {
   font-weight: 700 !important;
   letter-spacing: 0.3px;
+  color: #ffffff !important;
+}
+.alert-sub-title,
+.alert-message,
+.alert-radio-label,
+.alert-checkbox-label,
+.alert-input {
+  color: #f8fafc !important;
 }
 .alert-button {
   border-radius: 12px !important;
@@ -257,6 +265,35 @@ body.light-theme ion-item.glass-input::part(native) {
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+/* Calculator Styles */
+.calc-display {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.calc-btn {
+  --background: rgba(255, 255, 255, 0.05);
+}
+.calc-btn-operator {
+  --background: rgba(139, 92, 246, 0.15);
+}
+.calc-btn-action {
+  --background: rgba(244, 63, 94, 0.15);
+}
+
+body.light-theme .calc-display {
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+body.light-theme .calc-btn {
+  --background: rgba(0, 0, 0, 0.05);
+}
+body.light-theme .calc-btn-operator {
+  --background: rgba(139, 92, 246, 0.15);
+}
+body.light-theme .calc-btn-action {
+  --background: rgba(244, 63, 94, 0.15);
+}
+
 /* Page Background */
 ion-content {
   --background: radial-gradient(circle at 10% 0%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
@@ -311,6 +348,16 @@ body.light-theme ion-modal::part(content) {
 body.light-theme ion-alert .alert-wrapper {
   background: rgba(255, 255, 255, 0.96) !important;
   border: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+body.light-theme ion-alert .alert-title {
+  color: #0f172a !important;
+}
+body.light-theme ion-alert .alert-sub-title,
+body.light-theme ion-alert .alert-message,
+body.light-theme ion-alert .alert-radio-label,
+body.light-theme ion-alert .alert-checkbox-label,
+body.light-theme ion-alert .alert-input {
+  color: #334155 !important;
 }
 body.light-theme ion-popover::part(content) {
   background: rgba(255, 255, 255, 0.96);

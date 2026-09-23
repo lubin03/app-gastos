@@ -4,6 +4,7 @@ import { add, createOutline, flagOutline } from 'ionicons/icons';
 import { goalService, Goal } from '../services/goalService';
 import Header from '../components/Header';
 import { useTranslation } from 'react-i18next';
+import AmountInput from '../components/AmountInput';
 
 const Goals: React.FC = () => {
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -147,13 +148,17 @@ const Goals: React.FC = () => {
                 <IonInput value={name} onIonInput={e => setName(e.detail.value!)} label="Nombre de la Meta" labelPlacement="floating" />
               </IonItem>
               
-              <IonItem className="glass-input" lines="none">
-                <IonInput type="number" value={targetAmount} onIonInput={e => setTargetAmount(e.detail.value!)} label="Monto Objetivo" labelPlacement="floating" />
-              </IonItem>
+              <AmountInput 
+                value={targetAmount} 
+                onChange={val => setTargetAmount(val)} 
+                label="Monto Objetivo" 
+              />
 
-              <IonItem className="glass-input" lines="none">
-                <IonInput type="number" value={currentAmount} onIonInput={e => setCurrentAmount(e.detail.value!)} label="Monto Ahorrado" labelPlacement="floating" />
-              </IonItem>
+              <AmountInput 
+                value={currentAmount} 
+                onChange={val => setCurrentAmount(val)} 
+                label="Monto Ahorrado" 
+              />
 
               <IonItem className="glass-input" lines="none">
                 <IonInput type="date" value={deadline} onIonInput={e => setDeadline(e.detail.value!)} label="Fecha Límite" labelPlacement="floating" />

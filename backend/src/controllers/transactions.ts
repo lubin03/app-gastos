@@ -10,6 +10,8 @@ export const getTransactions = async (req: Request, res: Response) => {
     let queryStr = `
       SELECT t.*, a.name_encrypted as account_name_encrypted,
              d.name_encrypted as dest_account_name_encrypted,
+             i.month as invoice_month,
+             i.year as invoice_year,
              (SELECT COALESCE(json_agg(json_build_object('id', tg.id, 'name', tg.name)), '[]')
               FROM transaction_tags tt 
               JOIN tags tg ON tt.tag_id = tg.id 
@@ -17,6 +19,7 @@ export const getTransactions = async (req: Request, res: Response) => {
       FROM transactions t
       JOIN accounts a ON t.account_id = a.id
       LEFT JOIN accounts d ON t.destination_account_id = d.id
+      LEFT JOIN credit_card_invoices i ON t.invoice_id = i.id
       WHERE a.user_id = $1
     `;
     const params: any[] = [userId];
@@ -52,6 +55,8 @@ export const getTransactions = async (req: Request, res: Response) => {
       tags: row.tag_list || [],
       type: row.type,
       paid: row.paid,
+      invoice_month: row.invoice_month,
+      invoice_year: row.invoice_year,
       created_at: row.created_at
     }));
 
@@ -65,7 +70,7 @@ export const getTransactions = async (req: Request, res: Response) => {
 export const createTransaction = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const { amount, category_id, date, description, tags, type, paid, destination_account_id, installments } = req.body;
+    const { amount, category_id, date, description, tags, type, paid, destination_account_id, installments, invoice_month, invoice_year } = req.body;
     const account_id = req.body.account_id || req.body.accountId;
 
     // Validate account belongs to user
@@ -98,8 +103,25 @@ export const createTransaction = async (req: Request, res: Response) => {
 
       let invoiceId: string | null = null;
       if (accountType === 'credit_card') {
-        const period = computeInvoicePeriod(instDate, closingDay);
-        invoiceId = await getOrCreateInvoice(account_id, period.month, period.year, finalPaid ? 'paid' : 'open');
+        let currentMonth: number;
+        let currentYear: number;
+        
+        if (invoice_month && invoice_year) {
+          currentMonth = parseInt(invoice_month, 10);
+          currentYear = parseInt(invoice_year, 10);
+          
+          currentMonth += i;
+          while (currentMonth > 12) {
+            currentMonth -= 12;
+            currentYear++;
+          }
+        } else {
+          const period = computeInvoicePeriod(instDate, closingDay);
+          currentMonth = period.month;
+          currentYear = period.year;
+        }
+        
+        invoiceId = await getOrCreateInvoice(account_id, currentMonth, currentYear, finalPaid ? 'paid' : 'open');
       }
 
       const result = await query(
@@ -190,7 +212,7 @@ export const updateTransaction = async (req: Request, res: Response) => {
 
     // Validate transaction exists and belongs to user
     const existing = await query(`
-      SELECT t.id FROM transactions t
+      SELECT t.id, t.account_id, t.date, t.invoice_id FROM transactions t
       JOIN accounts a ON t.account_id = a.id
       WHERE t.id = $1 AND a.user_id = $2
     `, [id, userId]);
@@ -199,11 +221,36 @@ export const updateTransaction = async (req: Request, res: Response) => {
       return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    if (account_id) {
-      const accResult = await query('SELECT id FROM accounts WHERE id = $1 AND user_id = $2', [account_id, userId]);
-      if (accResult.rowCount === 0) {
-        return res.status(403).json({ error: 'Invalid account' });
+    const finalAccountId = account_id || existing.rows[0].account_id;
+    let accResult = await query('SELECT id, type, closing_day FROM accounts WHERE id = $1 AND user_id = $2', [finalAccountId, userId]);
+    
+    if (accResult.rowCount === 0) {
+      return res.status(403).json({ error: 'Invalid account' });
+    }
+
+    const { type: accountType, closing_day: closingDay } = accResult.rows[0];
+    let finalInvoiceId = existing.rows[0].invoice_id;
+
+    if (accountType === 'credit_card') {
+      const { invoice_month, invoice_year } = req.body;
+      const finalDate = date || existing.rows[0].date;
+      
+      let newMonth: number;
+      let newYear: number;
+      
+      if (invoice_month && invoice_year) {
+        newMonth = parseInt(invoice_month, 10);
+        newYear = parseInt(invoice_year, 10);
+      } else {
+        // Auto calculate
+        const period = computeInvoicePeriod(finalDate, closingDay);
+        newMonth = period.month;
+        newYear = period.year;
       }
+      
+      finalInvoiceId = await getOrCreateInvoice(finalAccountId, newMonth, newYear, 'open');
+    } else {
+      finalInvoiceId = null;
     }
 
     const descEncrypted = description !== undefined ? (description ? encrypt(description) : null) : undefined;
@@ -218,9 +265,10 @@ export const updateTransaction = async (req: Request, res: Response) => {
          description_encrypted = COALESCE($5, description_encrypted),
          type = COALESCE($6, type),
          paid = COALESCE($7, paid),
-         destination_account_id = $8
+         destination_account_id = $8,
+         invoice_id = $10
        WHERE id = $9 RETURNING *`,
-      [account_id, amount, category_id, date, descEncrypted, type, paid, destination_account_id || null, id]
+      [finalAccountId, amount, category_id, date, descEncrypted, type, paid, destination_account_id || null, id, finalInvoiceId]
     );
 
     const row = result.rows[0];

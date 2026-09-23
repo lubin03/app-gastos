@@ -9,6 +9,7 @@ import DateFilter from '../components/DateFilter';
 import { useFilter } from '../context/FilterContext';
 import { useTranslation } from 'react-i18next';
 import { institutionService, Institution } from '../services/institutionService';
+import AmountInput from '../components/AmountInput';
 
 const ICONS_MAP: Record<string, string> = {
   wallet, card, cash, home, car, cart, restaurant, airplane, medkit, school, gift, barbell, business, briefcase, laptop, phonePortrait
@@ -371,16 +372,20 @@ const Accounts: React.FC = () => {
               </IonItem>
 
               {accountType === 'debit' && (
-                <IonItem className="glass-input" lines="none">
-                  <IonInput type="number" value={initialBalance} onIonInput={e => setInitialBalance(e.detail.value!)} label="Saldo Inicial ($)" labelPlacement="floating" placeholder="0.00" />
-                </IonItem>
+                <AmountInput 
+                  value={initialBalance} 
+                  onChange={val => setInitialBalance(val)} 
+                  label="Saldo Inicial ($)" 
+                />
               )}
 
               {accountType === 'credit_card' && (
                 <>
-                  <IonItem className="glass-input" lines="none">
-                    <IonInput type="number" value={creditLimit} onIonInput={e => setCreditLimit(e.detail.value!)} label="Límite de Crédito ($)" labelPlacement="floating" />
-                  </IonItem>
+                  <AmountInput 
+                    value={creditLimit} 
+                    onChange={val => setCreditLimit(val)} 
+                    label="Límite de Crédito ($)" 
+                  />
                   <IonItem className="glass-input" lines="none">
                     <IonInput type="number" value={closingDay} onIonInput={e => setClosingDay(e.detail.value!)} label="Día de Cierre (1-31)" labelPlacement="floating" />
                   </IonItem>
@@ -527,9 +532,11 @@ const Accounts: React.FC = () => {
                 </IonSelect>
               </IonItem>
 
-              <IonItem className="glass-input" lines="none">
-                <IonInput type="number" value={payAmount} onIonInput={e => setPayAmount(e.detail.value!)} label={t('accounts.payAmount')} labelPlacement="floating" />
-              </IonItem>
+              <AmountInput 
+                value={payAmount} 
+                onChange={val => setPayAmount(val)} 
+                label={t('accounts.payAmount')} 
+              />
 
               <IonItem className="glass-input" lines="none">
                 <IonInput type="date" value={payDate} onIonInput={e => setPayDate(e.detail.value!)} label={t('common.date', 'Fecha')} labelPlacement="floating" />

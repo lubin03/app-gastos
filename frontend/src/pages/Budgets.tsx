@@ -6,6 +6,7 @@ import Header from '../components/Header';
 import DateFilter from '../components/DateFilter';
 import { useFilter } from '../context/FilterContext';
 import { useTranslation } from 'react-i18next';
+import AmountInput from '../components/AmountInput';
 
 const Budgets: React.FC = () => {
   const { startDate } = useFilter();
@@ -99,9 +100,11 @@ const Budgets: React.FC = () => {
                   ))}
                 </IonSelect>
               </IonItem>
-              <IonItem className="glass-input" lines="none">
-                <IonInput type="number" value={amount} onIonInput={e => setAmount(e.detail.value!)} label={t('budgets.amount')} labelPlacement="floating" />
-              </IonItem>
+              <AmountInput 
+                value={amount} 
+                onChange={val => setAmount(val)} 
+                label={t('budgets.amount')} 
+              />
               <IonButton expand="block" shape="round" className="ion-margin-top" style={{ height: '50px', '--background': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)', fontWeight: 600, fontSize: '16px', marginTop: '24px' }} onClick={handleCreate}>
                 {t('common.save')}
               </IonButton>

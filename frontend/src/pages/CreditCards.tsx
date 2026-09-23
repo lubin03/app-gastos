@@ -12,6 +12,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import Header from '../components/Header';
 import { api } from '../services/api';
+import AmountInput from '../components/AmountInput';
 
 const MONTH_NAMES = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
@@ -354,9 +355,11 @@ const CreditCards: React.FC = () => {
                 </IonSelect>
               </IonItem>
 
-              <IonItem className="glass-input" lines="none">
-                <IonInput type="number" value={payAmount} onIonInput={e => setPayAmount(e.detail.value!)} label="Monto a Pagar" labelPlacement="floating" />
-              </IonItem>
+              <AmountInput 
+                value={payAmount} 
+                onChange={val => setPayAmount(val)} 
+                label="Monto a Pagar" 
+              />
 
               <IonItem className="glass-input" lines="none">
                 <IonInput type="date" value={payDate} onIonInput={e => setPayDate(e.detail.value!)} label="Fecha de Pago" labelPlacement="floating" />

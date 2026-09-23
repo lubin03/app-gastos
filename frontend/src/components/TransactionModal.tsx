@@ -6,6 +6,7 @@ import { attachmentService, Attachment } from '../services/attachmentService';
 import { useTranslation } from 'react-i18next';
 import { documentOutline, trashOutline, attachOutline } from 'ionicons/icons';
 import { IonIcon } from '@ionic/react';
+import AmountInput from './AmountInput';
 
 interface Props {
   isOpen: boolean;
@@ -13,6 +14,24 @@ interface Props {
   onSaved: () => void;
   transaction?: any;
 }
+
+const MONTH_NAMES = [
+  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
+  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+];
+
+const generateInvoicePeriods = () => {
+  const periods = [];
+  const now = new Date();
+  for (let i = -3; i <= 24; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    periods.push({
+      value: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
+      label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`
+    });
+  }
+  return periods;
+};
 
 const formatDateToLocalInput = (dateInput?: string | Date) => {
   if (!dateInput) {
@@ -59,6 +78,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
   const [accountId, setAccountId] = useState('');
   const [destinationAccountId, setDestinationAccountId] = useState('');
   const [installments, setInstallments] = useState('1');
+  const [invoicePeriod, setInvoicePeriod] = useState('auto');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [accounts, setAccounts] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
@@ -84,6 +104,11 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
         setCategoryId(transaction.category_id);
         setDescription(transaction.description);
         setAccountId(transaction.account_id);
+        if (transaction.invoice_year && transaction.invoice_month) {
+          setInvoicePeriod(`${transaction.invoice_year}-${String(transaction.invoice_month).padStart(2, '0')}`);
+        } else {
+          setInvoicePeriod('auto');
+        }
         setDestinationAccountId(transaction.destination_account_id || '');
         setSelectedTags(transaction.tags?.map((t: any) => t.id) || []);
         attachmentService.getAttachmentsByTransaction(transaction.id).then(setAttachments).catch(console.error);
@@ -97,6 +122,7 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
         setAccountId('');
         setDestinationAccountId('');
         setInstallments('1');
+        setInvoicePeriod('auto');
         setSelectedTags([]);
         setAttachments([]);
         setPendingFile(null);
@@ -109,6 +135,14 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
 
   const handleSave = async () => {
     try {
+      let invoice_month = undefined;
+      let invoice_year = undefined;
+      if (invoicePeriod !== 'auto') {
+        const [y, m] = invoicePeriod.split('-');
+        invoice_year = parseInt(y, 10);
+        invoice_month = parseInt(m, 10);
+      }
+
       const payload = {
         type,
         amount: parseFloat(amount),
@@ -118,7 +152,9 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
         destination_account_id: type === 'transfer' ? destinationAccountId : null,
         date: getIsoDateFromInput(date, transaction?.date),
         tags: selectedTags,
-        installments: isCreditCard && !transaction ? parseInt(installments, 10) || 1 : 1
+        installments: isCreditCard && !transaction ? parseInt(installments, 10) || 1 : 1,
+        invoice_month,
+        invoice_year
       };
 
       if (transaction) {
@@ -185,6 +221,16 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
             </IonSelect>
           </IonItem>
         )}
+        {isCreditCard && type === 'expense' && (
+          <IonItem className="glass-input" lines="none">
+            <IonSelect value={invoicePeriod} onIonChange={e => setInvoicePeriod(e.detail.value)} label="Período de Facturación" labelPlacement="floating">
+              <IonSelectOption value="auto">Automático (por fecha)</IonSelectOption>
+              {generateInvoicePeriods().map(p => (
+                <IonSelectOption key={p.value} value={p.value}>{p.label}</IonSelectOption>
+              ))}
+            </IonSelect>
+          </IonItem>
+        )}
         {isCreditCard && !transaction && type === 'expense' && (
           <IonItem className="glass-input" lines="none">
             <IonSelect value={installments} onIonChange={e => setInstallments(e.detail.value)} label="Cuotas (Meses)" labelPlacement="floating">
@@ -194,9 +240,11 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
             </IonSelect>
           </IonItem>
         )}
-        <IonItem className="glass-input" lines="none">
-          <IonInput type="number" value={amount} onIonInput={e => setAmount(e.detail.value!)} label={t('common.amount')} labelPlacement="floating" />
-        </IonItem>
+        <AmountInput 
+          value={amount} 
+          onChange={val => setAmount(val)} 
+          label={t('common.amount')} 
+        />
         <IonItem className="glass-input" lines="none">
           <IonInput 
             type="date" 

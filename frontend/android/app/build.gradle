@@ -7,7 +7,8 @@ android {
         applicationId "com.lubin03.appgastos"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
+        def runNumber = System.getenv("GITHUB_RUN_NUMBER")
+        versionCode runNumber != null && !runNumber.isEmpty() ? runNumber.toInteger() : 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {

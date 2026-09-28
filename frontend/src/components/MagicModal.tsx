@@ -138,7 +138,7 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
   const submitToApi = async (payload: { text?: string; audioBase64?: string; imageBase64?: string; mimeType?: string }) => {
     setLoading(true);
     try {
-      const localDate = new Date().toLocaleDateString('es-CO'); // Gets YYYY-MM-DD in local time
+      const localDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local time
       const res = await api.post('/transactions/magic', { ...payload, localDate });
       alert(`¡Mágicamente guardado!\n${res.type === 'expense' ? 'Gasto' : 'Ingreso'} de $${res.amount}\nCategoría: ${res._magic_category_name}\nCuenta: ${res._magic_account_name}`);
       setText('');

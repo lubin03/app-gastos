@@ -18,7 +18,7 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
   const [loading, setLoading] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const { t } = useTranslation();
-  
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -122,13 +122,13 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
         const base64data = dataUrl.split(',')[1];
-        
+
         submitToApi({ imageBase64: base64data, mimeType: 'image/jpeg' });
       };
       img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
-    
+
     // reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -138,7 +138,7 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
   const submitToApi = async (payload: { text?: string; audioBase64?: string; imageBase64?: string; mimeType?: string }) => {
     setLoading(true);
     try {
-      const localDate = new Date().toLocaleDateString('en-CA'); // Gets YYYY-MM-DD in local time
+      const localDate = new Date().toLocaleDateString('es-CO'); // Gets YYYY-MM-DD in local time
       const res = await api.post('/transactions/magic', { ...payload, localDate });
       alert(`¡Mágicamente guardado!\n${res.type === 'expense' ? 'Gasto' : 'Ingreso'} de $${res.amount}\nCategoría: ${res._magic_category_name}\nCuenta: ${res._magic_account_name}`);
       setText('');
@@ -171,15 +171,15 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
             </Trans>
           </p>
 
-          <input 
-            type="file" 
-            accept="image/*" 
-            capture="environment" 
-            hidden 
-            ref={fileInputRef} 
-            onChange={handleImageSelect} 
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            ref={fileInputRef}
+            onChange={handleImageSelect}
           />
-          
+
           <IonItem lines="none" className="glass-input" style={{ marginBottom: '20px', borderRadius: '16px' }}>
             <IonTextarea
               placeholder={t('magicModal.placeholder')}
@@ -190,13 +190,13 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
               disabled={isRecording || loading}
             />
           </IonItem>
-          
+
           {text.trim() ? (
-            <IonButton 
-              expand="block" 
+            <IonButton
+              expand="block"
               shape="round"
-              onClick={handleSubmitText} 
-              disabled={loading} 
+              onClick={handleSubmitText}
+              disabled={loading}
               style={{ height: '52px', '--background': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)', fontWeight: 600, fontSize: '16px' }}
             >
               {loading ? <IonSpinner name="dots" color="light" /> : (
@@ -208,13 +208,13 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
             </IonButton>
           ) : (
             <div style={{ display: 'flex', gap: '10px' }}>
-              <IonButton 
+              <IonButton
                 shape="round"
                 onClick={toggleRecording}
-                disabled={loading} 
-                style={{ 
+                disabled={loading}
+                style={{
                   flex: 1,
-                  height: '60px', 
+                  height: '60px',
                   '--background': isRecording ? 'var(--ion-color-danger)' : 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)',
                   transition: 'all 0.3s ease',
                   fontWeight: 600,
@@ -233,8 +233,8 @@ const MagicModal: React.FC<MagicModalProps> = ({ isOpen, onClose, onSuccess, ini
                 shape="round"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={loading}
-                style={{ 
-                  height: '76px', 
+                style={{
+                  height: '76px',
                   width: '76px',
                   '--background': 'linear-gradient(135deg, #10b981 0%, #3b82f6 100%)',
                   fontWeight: 600,

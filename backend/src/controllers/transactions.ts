@@ -27,6 +27,7 @@ export const getTransactions = async (req: Request, res: Response) => {
     const startDate = req.query.startDate ? String(req.query.startDate).trim() : null;
     const endDate = req.query.endDate ? String(req.query.endDate).trim() : null;
     const accountId = req.query.accountId ? String(req.query.accountId).trim() : null;
+    const search = req.query.search ? String(req.query.search).trim() : null;
 
     if (startDate && endDate) {
       params.push(startDate, endDate);
@@ -42,7 +43,7 @@ export const getTransactions = async (req: Request, res: Response) => {
 
     const result = await query(queryStr, params);
     
-    const transactions = result.rows.map(row => ({
+    let transactions = result.rows.map(row => ({
       id: row.id,
       account_id: row.account_id,
       destination_account_id: row.destination_account_id,
@@ -59,6 +60,14 @@ export const getTransactions = async (req: Request, res: Response) => {
       invoice_year: row.invoice_year,
       created_at: row.created_at
     }));
+
+    if (search) {
+      const normalizedSearch = search.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      transactions = transactions.filter(t => {
+        const desc = (t.description || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        return desc.includes(normalizedSearch);
+      });
+    }
 
     res.status(200).json(transactions);
   } catch (error) {

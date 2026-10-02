@@ -71,6 +71,8 @@ export const getAccounts = async (req: Request, res: Response) => {
       balance: Number(row.balance)
     }));
 
+    accounts.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
     res.status(200).json(accounts);
   } catch (error) {
     console.error('Get accounts error', error);

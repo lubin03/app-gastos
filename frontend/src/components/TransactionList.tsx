@@ -20,14 +20,19 @@ interface Transaction {
 interface Props {
   transactions: Transaction[];
   onEdit: (t: Transaction) => void;
+  isSearching?: boolean;
 }
 
-const TransactionList: React.FC<Props> = ({ transactions, onEdit }) => {
+const TransactionList: React.FC<Props> = ({ transactions, onEdit, isSearching }) => {
   const { t } = useTranslation();
   if (transactions.length === 0) {
     return (
-      <div className="ion-text-center ion-padding" style={{ opacity: 0.5, marginTop: '20px' }}>
-        <p>{t('transactions.noTransactions')}</p>
+      <div className="ion-text-center ion-padding" style={{ opacity: 0.6, marginTop: '30px' }}>
+        <p style={{ fontSize: '15px' }}>
+          {isSearching
+            ? t('transactions.noMatches', 'No se encontraron transacciones que coincidan con la búsqueda.')
+            : t('transactions.noTransactions')}
+        </p>
       </div>
     );
   }

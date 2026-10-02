@@ -187,7 +187,9 @@ const TransactionModal: React.FC<Props> = ({ isOpen, onClose, onSaved, transacti
     }
   };
 
-  const selectableAccounts = accounts.filter(acc => !acc.is_archived || acc.id === accountId || acc.id === destinationAccountId);
+  const selectableAccounts = accounts
+    .filter(acc => !acc.is_archived || acc.id === accountId || acc.id === destinationAccountId)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
   return (
     <IonModal isOpen={isOpen} onDidDismiss={onClose} className="glass-modal">

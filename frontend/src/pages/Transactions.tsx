@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { IonContent, IonPage, IonFab, IonFabButton, IonIcon, IonSpinner, useIonViewWillEnter, IonButton, IonButtons, IonSegment, IonSegmentButton, IonLabel, IonItem, IonSelect, IonSelectOption } from '@ionic/react';
+import { IonContent, IonPage, IonFab, IonFabButton, IonIcon, IonSpinner, useIonViewWillEnter, IonButton, IonButtons, IonSegment, IonSegmentButton, IonLabel, IonItem, IonSelect, IonSelectOption, IonSearchbar } from '@ionic/react';
 import { useLocation, useHistory } from 'react-router-dom';
 import { add, downloadOutline, pushOutline } from 'ionicons/icons';
 import { api, notifyDataSync, useDataSync } from '../services/api';
+import { matchesPartialText } from '../utils/text';
 import TransactionList from '../components/TransactionList';
 import TransactionModal from '../components/TransactionModal';
 import MagicModal from '../components/MagicModal';
@@ -24,6 +25,7 @@ const Transactions: React.FC = () => {
   const [editingTransaction, setEditingTransaction] = useState<any>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [tab, setTab] = useState('all');
+  const [searchText, setSearchText] = useState('');
   const [sharedImageBase64, setSharedImageBase64] = useState<string | null>(null);
   const [sharedMimeType, setSharedMimeType] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -198,6 +200,14 @@ const Transactions: React.FC = () => {
       <IonContent>
         <div className="app-container">
           <div className="ion-padding-horizontal" style={{ marginBottom: '10px' }}>
+            <IonSearchbar 
+              value={searchText} 
+              onIonInput={e => setSearchText(e.detail.value || '')}
+              placeholder={t('transactions.searchPlaceholder', 'Buscar por nombre de gasto...')}
+              debounce={150}
+              showClearButton="focus"
+              className="glass-searchbar"
+            />
             <IonItem className="glass-input" lines="none" style={{ borderRadius: '16px' }}>
               <IonSelect 
                 value={filterAccountId || ''} 
@@ -215,11 +225,14 @@ const Transactions: React.FC = () => {
                 style={{ width: '100%' }}
               >
                 <IonSelectOption value="">Todas las Cuentas</IonSelectOption>
-                {accounts.map(acc => (
-                  <IonSelectOption key={acc.id} value={acc.id}>
-                    {acc.name} {acc.type === 'credit_card' ? '(Tarjeta)' : ''}
-                  </IonSelectOption>
-                ))}
+                {accounts
+                  .slice()
+                  .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }))
+                  .map(acc => (
+                    <IonSelectOption key={acc.id} value={acc.id}>
+                      {acc.name} {acc.type === 'credit_card' ? '(Tarjeta)' : ''}
+                    </IonSelectOption>
+                  ))}
               </IonSelect>
             </IonItem>
           </div>
@@ -270,7 +283,10 @@ const Transactions: React.FC = () => {
                   if (tab === 'pending') return t.paid === false;
                   if (tab === 'paid') return t.paid === true;
                   return true;
-                })} 
+                }).filter(t => {
+                  return matchesPartialText(t.description || t.category, searchText);
+                })}
+                isSearching={Boolean(searchText.trim())}
                 onEdit={(t) => {
                   setEditingTransaction(t);
                   setShowModal(true);

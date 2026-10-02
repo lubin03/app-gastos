@@ -289,6 +289,38 @@ body.light-theme ion-item.glass-input::part(native) {
   border: 1px solid rgba(0, 0, 0, 0.08);
 }
 
+/* Glass Searchbar */
+ion-searchbar.glass-searchbar {
+  --background: rgba(255, 255, 255, 0.05);
+  --border-radius: 16px;
+  --box-shadow: none;
+  --color: var(--ion-text-color);
+  --placeholder-color: var(--ion-color-medium);
+  --icon-color: var(--ion-color-primary);
+  --clear-button-color: var(--ion-color-medium);
+  padding-left: 0;
+  padding-right: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  margin-bottom: 12px;
+}
+ion-searchbar.glass-searchbar .searchbar-input-container {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  transition: all 0.2s ease;
+}
+ion-searchbar.glass-searchbar:focus-within .searchbar-input-container {
+  border-color: var(--ion-color-primary);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
+  background: rgba(255, 255, 255, 0.07);
+}
+body.light-theme ion-searchbar.glass-searchbar {
+  --background: rgba(0, 0, 0, 0.03);
+}
+body.light-theme ion-searchbar.glass-searchbar .searchbar-input-container {
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
 /* Calculator Styles */
 .calc-display {
   background: rgba(255, 255, 255, 0.05);

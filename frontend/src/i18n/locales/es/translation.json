@@ -106,7 +106,9 @@
     "deleteConfirm": "¿Seguro que querés eliminar esta transacción?",
     "backToAccount": "Volver a la cuenta",
     "export": "Exportar",
-    "import": "Importar"
+    "import": "Importar",
+    "searchPlaceholder": "Buscar por nombre de gasto...",
+    "noMatches": "No se encontraron transacciones que coincidan con la búsqueda."
   },
   "accounts": {
     "title": "Cuentas",

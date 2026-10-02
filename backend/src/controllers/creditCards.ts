@@ -40,6 +40,8 @@ export const getCreditCardsSummary = async (req: Request, res: Response) => {
       });
     }
 
+    cards.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
     res.status(200).json(cards);
   } catch (error) {
     console.error('Get credit cards summary error', error);

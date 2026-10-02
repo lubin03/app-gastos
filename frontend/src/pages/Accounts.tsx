@@ -183,9 +183,10 @@ const Accounts: React.FC = () => {
     }
   };
 
-  const activeBankAccounts = accounts.filter(a => a.type !== 'credit_card' && !a.is_archived);
-  const activeCreditCards = accounts.filter(a => a.type === 'credit_card' && !a.is_archived);
-  const archivedAccounts = accounts.filter(a => a.is_archived);
+  const sortByName = (a: any, b: any) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+  const activeBankAccounts = accounts.filter(a => a.type !== 'credit_card' && !a.is_archived).sort(sortByName);
+  const activeCreditCards = accounts.filter(a => a.type === 'credit_card' && !a.is_archived).sort(sortByName);
+  const archivedAccounts = accounts.filter(a => a.is_archived).sort(sortByName);
   const totalBankBalance = activeBankAccounts.reduce((sum, a) => sum + (Number(a.balance) || 0), 0);
   const totalCcDebt = activeCreditCards.reduce((sum, a) => sum + (Number(a.consumed) || 0), 0);
 

@@ -373,7 +373,7 @@ export const exportTransactions = async (req: Request, res: Response) => {
         t.invoice_id
       FROM transactions t
       JOIN accounts a ON t.account_id = a.id
-      JOIN categories c ON t.category_id = c.id
+      LEFT JOIN categories c ON t.category_id = c.id
       WHERE a.user_id = $1 AND t.type IN ('income', 'expense')
       ORDER BY t.date DESC
     `, [userId]);

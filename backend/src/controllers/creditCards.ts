@@ -50,7 +50,7 @@ export const getCreditCardsSummary = async (req: Request, res: Response) => {
 export const getCreditCardInvoices = async (req: Request, res: Response) => {
   try {
     const userId = (req as any).user.userId;
-    const { id } = req.params;
+    const id = req.params.id as string;
 
     // Validate ownership
     const ccResult = await query('SELECT id, closing_day, due_day FROM accounts WHERE id = $1 AND user_id = $2 AND type = $3', [id, userId, 'credit_card']);
@@ -97,16 +97,21 @@ export const getCreditCardInvoices = async (req: Request, res: Response) => {
       });
     }
 
-    const invoices = invoicesResult.rows.map(inv => ({
-      id: inv.id,
-      month: inv.month,
-      year: inv.year,
-      status: inv.status,
-      total_amount: parseFloat(inv.total_amount || '0'),
-      paid_amount: parseFloat(inv.paid_amount || '0'),
-      transaction_count: parseInt(inv.transaction_count || '0', 10),
-      is_current: inv.month === currentPeriod.month && inv.year === currentPeriod.year
-    }));
+    const invoices = invoicesResult.rows.map(inv => {
+      const total = parseFloat(inv.total_amount || '0');
+      const paid = parseFloat(inv.paid_amount || '0');
+      return {
+        id: inv.id,
+        month: inv.month,
+        year: inv.year,
+        status: inv.status,
+        total_amount: total,
+        paid_amount: paid,
+        unpaid_amount: Math.max(0, total - paid),
+        transaction_count: parseInt(inv.transaction_count || '0', 10),
+        is_current: inv.month === currentPeriod.month && inv.year === currentPeriod.year
+      };
+    });
 
     res.status(200).json(invoices);
   } catch (error) {
@@ -171,12 +176,126 @@ export const getCreditCardTransactions = async (req: Request, res: Response) => 
       invoice_id: row.invoice_id,
       invoice_month: row.invoice_month,
       invoice_year: row.invoice_year,
-      invoice_status: row.invoice_status
+      invoice_status: row.invoice_status,
+      installment_current: row.installment_current,
+      installment_total: row.installment_total,
+      parent_transaction_id: row.parent_transaction_id
     }));
 
     res.status(200).json(transactions);
   } catch (error) {
     console.error('Get credit card transactions error', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const toggleTransactionPaid = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { id, txId } = req.params;
+
+    // Validate ownership: transaction must belong to account owned by user
+    const txResult = await query(`
+      SELECT t.id, t.paid, t.invoice_id, t.account_id, t.date, a.closing_day
+      FROM transactions t
+      JOIN accounts a ON t.account_id = a.id
+      WHERE t.id = $1 AND a.id = $2 AND a.user_id = $3 AND a.type = 'credit_card'
+    `, [txId, id, userId]);
+
+    if (txResult.rowCount === 0) {
+      return res.status(404).json({ error: 'Credit card transaction not found' });
+    }
+
+    const tx = txResult.rows[0];
+    const newPaid = !tx.paid;
+
+    let invoiceId = tx.invoice_id;
+    if (!invoiceId) {
+      const period = computeInvoicePeriod(tx.date, tx.closing_day);
+      invoiceId = await getOrCreateInvoice(tx.account_id, period.month, period.year, 'open');
+    }
+
+    // Update transaction
+    await query('UPDATE transactions SET paid = $1, invoice_id = $2 WHERE id = $3', [newPaid, invoiceId, txId]);
+
+    // Recalculate invoice status based on all expense transactions in this invoice
+    const statsResult = await query(`
+      SELECT 
+        COUNT(*) as total_count,
+        COUNT(CASE WHEN paid = TRUE THEN 1 END) as paid_count
+      FROM transactions
+      WHERE invoice_id = $1 AND account_id = $2 AND type = 'expense'
+    `, [invoiceId, id]);
+
+    const totalCount = parseInt(statsResult.rows[0].total_count || '0', 10);
+    const paidCount = parseInt(statsResult.rows[0].paid_count || '0', 10);
+
+    let newStatus = 'open';
+    if (totalCount > 0 && paidCount === totalCount) {
+      newStatus = 'paid';
+    } else if (paidCount > 0 && paidCount < totalCount) {
+      newStatus = 'partial';
+    } else {
+      newStatus = 'open';
+    }
+
+    await query('UPDATE credit_card_invoices SET status = $1 WHERE id = $2', [newStatus, invoiceId]);
+
+    res.status(200).json({
+      message: 'Transaction paid status updated',
+      transaction_id: txId,
+      paid: newPaid,
+      invoice_id: invoiceId,
+      invoice_status: newStatus
+    });
+  } catch (error) {
+    console.error('Toggle transaction paid error', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+export const bulkUpdateInstallments = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user.userId;
+    const { parentId } = req.params;
+    const { amount } = req.body;
+
+    if (amount === undefined || isNaN(parseFloat(amount))) {
+      return res.status(400).json({ error: 'Valid amount is required' });
+    }
+
+    const newAmount = parseFloat(amount);
+
+    // Verify parent or sibling belongs to user
+    const checkResult = await query(`
+      SELECT t.id, t.account_id, t.parent_transaction_id
+      FROM transactions t
+      JOIN accounts a ON t.account_id = a.id
+      WHERE (t.id = $1 OR t.parent_transaction_id = $1) AND a.user_id = $2
+      LIMIT 1
+    `, [parentId, userId]);
+
+    if (checkResult.rowCount === 0) {
+      return res.status(404).json({ error: 'Installment group not found' });
+    }
+
+    const effectiveParentId = checkResult.rows[0].parent_transaction_id || checkResult.rows[0].id;
+
+    // Update all unpaid siblings in this installment group
+    const updateResult = await query(`
+      UPDATE transactions
+      SET amount = $1
+      WHERE (parent_transaction_id = $2 OR id = $2) AND paid = FALSE
+      RETURNING id, amount, installment_current
+    `, [newAmount, effectiveParentId]);
+
+    res.status(200).json({
+      message: 'Installments updated successfully',
+      updated_count: updateResult.rowCount,
+      updated_transactions: updateResult.rows
+    });
+  } catch (error) {
+    console.error('Bulk update installments error', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
@@ -238,6 +357,36 @@ export const moveTransactionInvoice = async (req: Request, res: Response) => {
     const newInvoiceId = await getOrCreateInvoice(tx.account_id, targetMonth, targetYear, 'open');
 
     await query('UPDATE transactions SET invoice_id = $1 WHERE id = $2', [newInvoiceId, txId]);
+
+    // Recalculate invoice statuses for old and new invoice
+    const invoicesToRecalc = [newInvoiceId];
+    if (tx.invoice_id && tx.invoice_id !== newInvoiceId) {
+      invoicesToRecalc.push(tx.invoice_id);
+    }
+
+    for (const invId of invoicesToRecalc) {
+      const statsResult = await query(`
+        SELECT 
+          COUNT(*) as total_count,
+          COUNT(CASE WHEN paid = TRUE THEN 1 END) as paid_count
+        FROM transactions
+        WHERE invoice_id = $1 AND account_id = $2 AND type = 'expense'
+      `, [invId, tx.account_id]);
+
+      const totalCount = parseInt(statsResult.rows[0].total_count || '0', 10);
+      const paidCount = parseInt(statsResult.rows[0].paid_count || '0', 10);
+
+      let newStatus = 'open';
+      if (totalCount > 0 && paidCount === totalCount) {
+        newStatus = 'paid';
+      } else if (paidCount > 0 && paidCount < totalCount) {
+        newStatus = 'partial';
+      } else {
+        newStatus = 'open';
+      }
+
+      await query('UPDATE credit_card_invoices SET status = $1 WHERE id = $2', [newStatus, invId]);
+    }
 
     res.status(200).json({
       message: 'Transaction invoice updated',

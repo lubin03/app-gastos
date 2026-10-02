@@ -1,3 +1,5 @@
+import { notifyDataSync, SyncDomain } from './dataSync';
+
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
 export class ApiError extends Error {
@@ -6,6 +8,29 @@ export class ApiError extends Error {
     super(message);
     this.status = status;
   }
+}
+
+function inferDomainsFromEndpoint(endpoint: string): SyncDomain[] {
+  const clean = endpoint.toLowerCase();
+  if (clean.includes('/transactions')) {
+    return ['transactions', 'accounts', 'creditCards'];
+  }
+  if (clean.includes('/accounts')) {
+    return ['accounts', 'transactions', 'creditCards'];
+  }
+  if (clean.includes('/credit-cards')) {
+    return ['creditCards', 'accounts', 'transactions'];
+  }
+  if (clean.includes('/budgets')) {
+    return ['budgets', 'transactions'];
+  }
+  if (clean.includes('/goals')) {
+    return ['goals', 'accounts'];
+  }
+  if (clean.includes('/categories')) {
+    return ['categories', 'transactions', 'budgets'];
+  }
+  return ['all'];
 }
 
 async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
@@ -45,6 +70,13 @@ async function fetchWithAuth(endpoint: string, options: RequestInit = {}) {
     throw new ApiError(message, response.status);
   }
 
+  // Auto-broadcast data sync on successful mutations
+  const method = (options.method || 'GET').toUpperCase();
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+    const domains = inferDomainsFromEndpoint(endpoint);
+    notifyDataSync(domains);
+  }
+
   // Handle 204 No Content
   if (response.status === 204) {
     return null;
@@ -63,6 +95,12 @@ export const api = {
   put: (endpoint: string, data: any, options?: RequestInit) => 
     fetchWithAuth(endpoint, { ...options, method: 'PUT', body: data instanceof FormData ? data : JSON.stringify(data) }),
   
+  patch: (endpoint: string, data?: any, options?: RequestInit) => 
+    fetchWithAuth(endpoint, { ...options, method: 'PATCH', body: data !== undefined ? (data instanceof FormData ? data : JSON.stringify(data)) : undefined }),
+  
   delete: (endpoint: string, options?: RequestInit) => 
     fetchWithAuth(endpoint, { ...options, method: 'DELETE' }),
 };
+
+export { notifyDataSync, useDataSync } from './dataSync';
+

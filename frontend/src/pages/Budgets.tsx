@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { IonContent, IonHeader, IonPage, IonTitle, IonToolbar, IonList, IonItem, IonLabel, IonFab, IonFabButton, IonIcon, IonModal, IonButton, IonInput, IonSpinner, useIonViewWillEnter, IonSelect, IonSelectOption } from '@ionic/react';
 import { add } from 'ionicons/icons';
-import { api } from '../services/api';
+import { api, useDataSync } from '../services/api';
 import Header from '../components/Header';
 import DateFilter from '../components/DateFilter';
 import { useFilter } from '../context/FilterContext';
@@ -32,6 +32,10 @@ const Budgets: React.FC = () => {
   };
 
   useIonViewWillEnter(() => {
+    loadBudgets();
+  });
+
+  useDataSync(['budgets', 'transactions', 'categories'], () => {
     loadBudgets();
   });
 

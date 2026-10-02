@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { IonContent, IonPage, IonList, IonItem, IonLabel, IonFab, IonFabButton, IonIcon, IonModal, IonButton, IonInput, IonSpinner, useIonViewWillEnter, IonHeader, IonToolbar, IonTitle, IonProgressBar } from '@ionic/react';
 import { add, createOutline, flagOutline } from 'ionicons/icons';
 import { goalService, Goal } from '../services/goalService';
+import { useDataSync } from '../services/api';
 import Header from '../components/Header';
 import { useTranslation } from 'react-i18next';
 import AmountInput from '../components/AmountInput';
@@ -33,6 +34,10 @@ const Goals: React.FC = () => {
   };
 
   useIonViewWillEnter(() => {
+    loadData();
+  });
+
+  useDataSync(['goals', 'accounts'], () => {
     loadData();
   });
 

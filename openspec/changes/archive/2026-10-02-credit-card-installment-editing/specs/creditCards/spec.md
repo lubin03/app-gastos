@@ -1,10 +1,6 @@
-# Credit Cards
+# Delta for Credit Cards
 
-## Requirements
-
-### Requirement: Billing Periods Accordion View
-
-The system MUST display credit card transactions grouped by billing periods (invoices) in an expandable accordion layout, allowing users to see all periods at a glance. Each invoice header MUST show the total amount, pending amount, and a status badge (Abierto / Parcial / Pagado).
+## ADDED Requirements
 
 ### Requirement: Toggle Transaction Paid Status
 
@@ -79,3 +75,10 @@ The system MUST display installment context on credit card transactions that are
 - GIVEN a transaction with `installment_total = 1` or NULL
 - WHEN the user views it in the credit card invoice list
 - THEN no installment badge is shown
+
+## MODIFIED Requirements
+
+### Requirement: Billing Periods Accordion View
+
+The system MUST display credit card transactions grouped by billing periods (invoices) in an expandable accordion layout, allowing users to see all periods at a glance. Each invoice header MUST show the total amount, pending amount, and a status badge (Abierto / Parcial / Pagado).
+(Previously: Header only showed total amount and status badge without pending amount or partial status)

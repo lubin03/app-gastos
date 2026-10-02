@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { IonContent, IonPage, IonTitle, IonToolbar, IonList, IonItem, IonLabel, IonFab, IonFabButton, IonIcon, IonModal, IonButton, IonInput, IonSpinner, useIonViewWillEnter, IonSelect, IonSelectOption, IonHeader } from '@ionic/react';
 import { add } from 'ionicons/icons';
-import { api } from '../services/api';
+import { api, useDataSync } from '../services/api';
 import Header from '../components/Header';
 import { useTranslation } from 'react-i18next';
 
@@ -26,6 +26,10 @@ const Categories: React.FC = () => {
   };
 
   useIonViewWillEnter(() => {
+    loadCategories();
+  });
+
+  useDataSync(['categories'], () => {
     loadCategories();
   });
 

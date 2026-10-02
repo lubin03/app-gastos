@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { IonContent, IonPage, IonFab, IonFabButton, IonIcon, IonSpinner, useIonViewWillEnter, IonButton, IonButtons, IonSegment, IonSegmentButton, IonLabel, IonItem, IonSelect, IonSelectOption } from '@ionic/react';
 import { useLocation, useHistory } from 'react-router-dom';
 import { add, downloadOutline, pushOutline } from 'ionicons/icons';
-import { api } from '../services/api';
+import { api, notifyDataSync, useDataSync } from '../services/api';
 import TransactionList from '../components/TransactionList';
 import TransactionModal from '../components/TransactionModal';
 import MagicModal from '../components/MagicModal';
@@ -128,6 +128,10 @@ const Transactions: React.FC = () => {
     loadTransactionsRef.current();
   });
 
+  useDataSync(['transactions', 'accounts'], () => {
+    loadTransactions();
+  });
+
   React.useEffect(() => {
     loadTransactions();
   }, [startDate, endDate, location.search]);
@@ -176,6 +180,7 @@ const Transactions: React.FC = () => {
       }
 
       alert('Transactions imported successfully!');
+      notifyDataSync(['transactions', 'accounts', 'creditCards']);
       loadTransactions();
     } catch (err: any) {
       console.error(err);

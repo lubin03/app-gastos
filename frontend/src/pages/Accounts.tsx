@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { IonContent, IonPage, IonTitle, IonToolbar, IonList, IonItem, IonLabel, IonFab, IonFabButton, IonIcon, IonModal, IonButton, IonInput, IonSpinner, useIonViewWillEnter, IonGrid, IonRow, IonCol, IonSelect, IonSelectOption, IonButtons, IonHeader, IonSearchbar, IonSegment, IonSegmentButton, IonToggle } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
 import { add, wallet, card, cash, home, car, cart, restaurant, airplane, medkit, school, gift, barbell, business, briefcase, laptop, phonePortrait, createOutline, checkmark, archiveOutline, chevronDownOutline, chevronUpOutline } from 'ionicons/icons';
-import { api } from '../services/api';
+import { api, useDataSync } from '../services/api';
 import { BankLogo } from 'paybrand';
 import Header from '../components/Header';
 import DateFilter from '../components/DateFilter';
@@ -88,6 +88,10 @@ const Accounts: React.FC = () => {
   };
 
   useIonViewWillEnter(() => {
+    loadData();
+  });
+
+  useDataSync(['accounts', 'transactions', 'creditCards'], () => {
     loadData();
   });
 

@@ -3,15 +3,16 @@ import {
   IonContent, IonPage, IonList, IonItem, IonLabel, IonSpinner, IonIcon, 
   useIonViewWillEnter, IonProgressBar, IonModal, IonButton, IonHeader, 
   IonToolbar, IonTitle, IonButtons, IonSelect, IonSelectOption, IonInput,
-  IonBadge, IonChip, useIonToast, IonAccordionGroup, IonAccordion
+  IonBadge, IonChip, useIonToast, IonAccordionGroup, IonAccordion, IonCheckbox
 } from '@ionic/react';
 import { 
   cardOutline, closeOutline, checkmarkCircleOutline, ellipseOutline, 
-  arrowForwardOutline, calendarOutline, cashOutline, timeOutline, checkmarkOutline
+  arrowForwardOutline, arrowBackOutline, calendarOutline, cashOutline, timeOutline, checkmarkOutline,
+  pencilOutline
 } from 'ionicons/icons';
 import { useTranslation } from 'react-i18next';
 import Header from '../components/Header';
-import { api } from '../services/api';
+import { api, useDataSync } from '../services/api';
 import AmountInput from '../components/AmountInput';
 
 const MONTH_NAMES = [
@@ -39,7 +40,20 @@ const CreditCards: React.FC = () => {
   const [payAmount, setPayAmount] = useState<string>('');
   const [payDate, setPayDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
+  // Edit Transaction Modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingTx, setEditingTx] = useState<any>(null);
+  const [editAmount, setEditAmount] = useState<string>('');
+  const [editDescription, setEditDescription] = useState<string>('');
+  const [editApplyToRemaining, setEditApplyToRemaining] = useState<boolean>(false);
+  const [editSaving, setEditSaving] = useState(false);
+
   useIonViewWillEnter(() => {
+    fetchCards();
+    fetchAccounts();
+  });
+
+  useDataSync(['creditCards', 'accounts', 'transactions'], () => {
     fetchCards();
     fetchAccounts();
   });
@@ -86,10 +100,10 @@ const CreditCards: React.FC = () => {
 
 
 
-  const handleMoveTransaction = async (txId: string, e: React.MouseEvent) => {
+  const handleMoveTransaction = async (txId: string, direction: 'prev' | 'next', e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      const res = await api.put(`/credit-cards/transactions/${txId}/move`, { direction: 'next' });
+      const res = await api.put(`/credit-cards/transactions/${txId}/move`, { direction });
       presentToast({
         message: `Compra movida a la factura de ${MONTH_NAMES[res.month - 1]} ${res.year}`,
         duration: 2500,
@@ -114,6 +128,88 @@ const CreditCards: React.FC = () => {
         duration: 2500,
         color: 'danger'
       });
+    }
+  };
+
+  const handleTogglePaid = async (tx: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!selectedCard) return;
+    try {
+      await api.patch(`/credit-cards/${selectedCard.id}/transactions/${tx.id}/toggle-paid`, {});
+      const [invData, txData] = await Promise.all([
+        api.get(`/credit-cards/${selectedCard.id}/invoices`),
+        api.get(`/credit-cards/${selectedCard.id}/transactions?all=true`)
+      ]);
+      setInvoices(invData);
+      setTransactions(txData);
+      fetchCards();
+    } catch (err) {
+      console.error('Failed to toggle paid status', err);
+      presentToast({
+        message: 'No se pudo cambiar el estado de pago',
+        duration: 2500,
+        color: 'danger'
+      });
+    }
+  };
+
+  const handleOpenEdit = (tx: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingTx(tx);
+    setEditAmount(tx.amount.toString());
+    setEditDescription(tx.description || '');
+    setEditApplyToRemaining(false);
+    setShowEditModal(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingTx || !selectedCard) return;
+    try {
+      setEditSaving(true);
+      const parsedAmount = parseFloat(editAmount);
+      if (isNaN(parsedAmount)) {
+        presentToast({ message: 'Ingrese un monto válido', duration: 2500, color: 'warning' });
+        return;
+      }
+      
+      // Update this transaction
+      await api.put(`/transactions/${editingTx.id}`, {
+        amount: parsedAmount,
+        description: editDescription
+      });
+
+      // If apply to remaining is checked, bulk update remaining unpaid installments
+      if (editApplyToRemaining && (editingTx.parent_transaction_id || (editingTx.installment_total && editingTx.installment_total > 1))) {
+        const parentId = editingTx.parent_transaction_id || editingTx.id;
+        await api.put(`/credit-cards/installments/${parentId}/bulk-update`, {
+          amount: parsedAmount
+        });
+      }
+
+      setShowEditModal(false);
+      presentToast({
+        message: 'Transacción actualizada correctamente',
+        duration: 2500,
+        color: 'success',
+        icon: checkmarkOutline
+      });
+
+      const [invData, txData] = await Promise.all([
+        api.get(`/credit-cards/${selectedCard.id}/invoices`),
+        api.get(`/credit-cards/${selectedCard.id}/transactions?all=true`)
+      ]);
+      setInvoices(invData);
+      setTransactions(txData);
+      fetchCards();
+    } catch (err) {
+      console.error('Failed to update transaction', err);
+      presentToast({
+        message: 'Error al actualizar la transacción',
+        duration: 2500,
+        color: 'danger'
+      });
+    } finally {
+      setEditSaving(false);
     }
   };
 
@@ -274,12 +370,18 @@ const CreditCards: React.FC = () => {
                             <h2 style={{ fontWeight: 600 }}>{MONTH_NAMES[inv.month - 1]} {inv.year}</h2>
                             <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)' }}>
                               Total: ${inv.total_amount.toLocaleString()}
+                              {((inv.unpaid_amount !== undefined ? inv.unpaid_amount : (inv.total_amount - inv.paid_amount)) > 0) && (
+                                <span style={{ color: 'var(--ion-color-warning)', fontWeight: 600, marginLeft: '8px' }}>
+                                  • Pendiente: ${(inv.unpaid_amount !== undefined ? inv.unpaid_amount : (inv.total_amount - inv.paid_amount)).toLocaleString()}
+                                </span>
+                              )}
                             </p>
                           </IonLabel>
                           <div slot="end" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             {inv.is_current && <IonBadge color="primary">Actual</IonBadge>}
                             {(inv.status === 'paid' || (inv.total_amount > 0 && inv.paid_amount >= inv.total_amount)) && <IonBadge color="success">Pagado</IonBadge>}
-                            {inv.status === 'closed' && inv.paid_amount < inv.total_amount && <IonBadge color="warning">Cerrado</IonBadge>}
+                            {(inv.status === 'partial' || (inv.paid_amount > 0 && inv.paid_amount < inv.total_amount)) && <IonBadge color="warning">Parcial</IonBadge>}
+                            {inv.status === 'closed' && inv.paid_amount < inv.total_amount && <IonBadge color="medium">Cerrado</IonBadge>}
                           </div>
                         </IonItem>
                         
@@ -301,10 +403,27 @@ const CreditCards: React.FC = () => {
                           <IonList style={{ background: 'transparent' }}>
                             {(transactionsByInvoice[inv.id] || []).map(tx => (
                               <IonItem key={tx.id} lines="none" className="glass-item" style={{ marginBottom: '8px' }}>
-                                <IonIcon icon={tx.paid ? checkmarkCircleOutline : ellipseOutline} slot="start" color={tx.paid ? 'success' : 'medium'} style={{ fontSize: '20px' }} />
+                                <div 
+                                  onClick={(e) => handleTogglePaid(tx, e)}
+                                  style={{ cursor: 'pointer', padding: '6px', marginRight: '6px', display: 'flex', alignItems: 'center' }}
+                                  title={tx.paid ? 'Marcar como pendiente' : 'Marcar como pagado'}
+                                >
+                                  <IonIcon 
+                                    icon={tx.paid ? checkmarkCircleOutline : ellipseOutline} 
+                                    color={tx.paid ? 'success' : 'medium'} 
+                                    style={{ fontSize: '22px' }} 
+                                  />
+                                </div>
                                 <IonLabel>
-                                  <h2 style={{ fontWeight: 600 }}>{tx.description || tx.category_name}</h2>
-                                  <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                    <h2 style={{ fontWeight: 600, margin: 0 }}>{tx.description || tx.category_name}</h2>
+                                    {tx.installment_total && tx.installment_total > 1 && (
+                                      <IonBadge color="secondary" style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '4px' }}>
+                                        Cuota {tx.installment_current || 1}/{tx.installment_total}
+                                      </IonBadge>
+                                    )}
+                                  </div>
+                                  <p style={{ fontSize: '12px', color: 'var(--ion-color-medium)', marginTop: '2px' }}>
                                     {tx.date.split('T')[0]} • {tx.category_name}
                                   </p>
                                 </IonLabel>
@@ -312,18 +431,43 @@ const CreditCards: React.FC = () => {
                                 <div slot="end" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
                                   <span style={{ fontWeight: 700, fontSize: '15px' }}>${tx.amount.toLocaleString()}</span>
                                   
-                                  <IonButton 
-                                    fill="clear" 
-                                    size="small" 
-                                    color="primary" 
-                                    shape="round"
-                                    style={{ height: '24px', fontSize: '11px', margin: 0, textTransform: 'none' }}
-                                    onClick={(e) => handleMoveTransaction(tx.id, e)}
-                                    title="Mover al siguiente período de facturación"
-                                  >
-                                    <IonIcon icon={arrowForwardOutline} slot="end" style={{ fontSize: '13px' }} />
-                                    Siguiente
-                                  </IonButton>
+                                  <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                                    <IonButton 
+                                      fill="clear" 
+                                      size="small" 
+                                      color="medium" 
+                                      shape="round"
+                                      style={{ height: '24px', fontSize: '11px', margin: 0, padding: '0 4px', textTransform: 'none' }}
+                                      onClick={(e) => handleOpenEdit(tx, e)}
+                                      title="Editar valor / descripción"
+                                    >
+                                      <IonIcon icon={pencilOutline} slot="icon-only" style={{ fontSize: '14px' }} />
+                                    </IonButton>
+
+                                    <IonButton 
+                                      fill="clear" 
+                                      size="small" 
+                                      color="primary" 
+                                      shape="round"
+                                      style={{ height: '24px', fontSize: '11px', margin: 0, padding: '0 4px', textTransform: 'none' }}
+                                      onClick={(e) => handleMoveTransaction(tx.id, 'prev', e)}
+                                      title="Mover al corte anterior"
+                                    >
+                                      <IonIcon icon={arrowBackOutline} slot="icon-only" style={{ fontSize: '13px' }} />
+                                    </IonButton>
+
+                                    <IonButton 
+                                      fill="clear" 
+                                      size="small" 
+                                      color="primary" 
+                                      shape="round"
+                                      style={{ height: '24px', fontSize: '11px', margin: 0, padding: '0 4px', textTransform: 'none' }}
+                                      onClick={(e) => handleMoveTransaction(tx.id, 'next', e)}
+                                      title="Mover al siguiente corte"
+                                    >
+                                      <IonIcon icon={arrowForwardOutline} slot="icon-only" style={{ fontSize: '13px' }} />
+                                    </IonButton>
+                                  </div>
                                 </div>
                               </IonItem>
                             ))}
@@ -367,6 +511,72 @@ const CreditCards: React.FC = () => {
 
               <IonButton expand="block" shape="round" className="ion-margin-top" style={{ height: '50px', '--background': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)', fontWeight: 600, fontSize: '16px', marginTop: '24px' }} onClick={handlePayInvoice}>
                 Confirmar Pago
+              </IonButton>
+            </IonContent>
+          </IonModal>
+
+          {/* Modal Editar Transacción de Tarjeta */}
+          <IonModal 
+            isOpen={showEditModal} 
+            onDidDismiss={() => setShowEditModal(false)} 
+            className="glass-modal" 
+            initialBreakpoint={0.65} 
+            breakpoints={[0, 0.65, 0.85]}
+          >
+            <IonContent className="ion-padding">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <h2 style={{ fontWeight: 700, margin: 0 }}>Editar Movimiento</h2>
+                <IonButton fill="clear" onClick={() => setShowEditModal(false)}>
+                  <IonIcon icon={closeOutline} />
+                </IonButton>
+              </div>
+
+              {editingTx?.installment_total && editingTx.installment_total > 1 && (
+                <div style={{ marginBottom: '16px' }}>
+                  <IonChip color="secondary">
+                    Cuota {editingTx.installment_current || 1} de {editingTx.installment_total}
+                  </IonChip>
+                </div>
+              )}
+
+              <AmountInput 
+                value={editAmount} 
+                onChange={val => setEditAmount(val)} 
+                label="Valor de la Cuota" 
+              />
+
+              <IonItem className="glass-input ion-margin-top" lines="none">
+                <IonInput 
+                  value={editDescription} 
+                  onIonInput={e => setEditDescription(e.detail.value!)} 
+                  label="Descripción" 
+                  labelPlacement="floating" 
+                  placeholder="Descripción del gasto"
+                />
+              </IonItem>
+
+              {editingTx?.installment_total && editingTx.installment_total > 1 && (
+                <IonItem lines="none" style={{ marginTop: '12px', '--background': 'transparent' }}>
+                  <IonCheckbox 
+                    checked={editApplyToRemaining} 
+                    onIonChange={e => setEditApplyToRemaining(e.detail.checked)}
+                    justify="start"
+                    style={{ fontSize: '14px' }}
+                  >
+                    Aplicar este valor a las cuotas restantes pendientes
+                  </IonCheckbox>
+                </IonItem>
+              )}
+
+              <IonButton 
+                expand="block" 
+                shape="round" 
+                className="ion-margin-top" 
+                style={{ height: '50px', '--background': 'linear-gradient(135deg, #8b5cf6 0%, #ec4899 100%)', fontWeight: 600, fontSize: '16px', marginTop: '24px' }} 
+                onClick={handleSaveEdit}
+                disabled={editSaving || !editAmount}
+              >
+                {editSaving ? <IonSpinner name="crescent" /> : 'Guardar Cambios'}
               </IonButton>
             </IonContent>
           </IonModal>

@@ -235,20 +235,15 @@ export const updateTransaction = async (req: Request, res: Response) => {
       const { invoice_month, invoice_year } = req.body;
       const finalDate = date || existing.rows[0].date;
       
-      let newMonth: number;
-      let newYear: number;
-      
       if (invoice_month && invoice_year) {
-        newMonth = parseInt(invoice_month, 10);
-        newYear = parseInt(invoice_year, 10);
-      } else {
-        // Auto calculate
+        const newMonth = parseInt(invoice_month, 10);
+        const newYear = parseInt(invoice_year, 10);
+        finalInvoiceId = await getOrCreateInvoice(finalAccountId, newMonth, newYear, 'open');
+      } else if (date || !finalInvoiceId) {
+        // Auto calculate only if date was explicitly changed or no invoice existed
         const period = computeInvoicePeriod(finalDate, closingDay);
-        newMonth = period.month;
-        newYear = period.year;
+        finalInvoiceId = await getOrCreateInvoice(finalAccountId, period.month, period.year, 'open');
       }
-      
-      finalInvoiceId = await getOrCreateInvoice(finalAccountId, newMonth, newYear, 'open');
     } else {
       finalInvoiceId = null;
     }

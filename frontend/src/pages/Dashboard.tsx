@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { IonContent, IonPage, IonGrid, IonRow, IonCol, IonSpinner, IonIcon, useIonViewWillEnter, IonText, IonButton } from '@ionic/react';
+import { IonContent, IonPage, IonGrid, IonRow, IonCol, IonSpinner, IonIcon, useIonViewWillEnter, IonText, IonButton, IonFab, IonFabButton } from '@ionic/react';
 import { useHistory } from 'react-router-dom';
-import { walletOutline, trendingUpOutline, trendingDownOutline, cardOutline, eyeOutline, eyeOffOutline } from 'ionicons/icons';
+import { walletOutline, trendingUpOutline, trendingDownOutline, cardOutline, eyeOutline, eyeOffOutline, add, colorWandOutline } from 'ionicons/icons';
 import { useAuth } from '../context/AuthContext';
 import { useFilter } from '../context/FilterContext';
-import { api } from '../services/api';
+import { api, useDataSync } from '../services/api';
 import Header from '../components/Header';
 import DateFilter from '../components/DateFilter';
+import TransactionModal from '../components/TransactionModal';
+import MagicModal from '../components/MagicModal';
 import { useTranslation } from 'react-i18next';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend, Label } from 'recharts';
 
@@ -59,8 +61,15 @@ const Dashboard: React.FC = () => {
   const { t } = useTranslation();
 
   const [creditCards, setCreditCards] = useState<any[]>([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showMagicModal, setShowMagicModal] = useState(false);
 
   useIonViewWillEnter(() => {
+    fetchDashboardData();
+    fetchCreditCards();
+  });
+
+  useDataSync(['transactions', 'accounts', 'creditCards'], () => {
     fetchDashboardData();
     fetchCreditCards();
   });
@@ -119,7 +128,7 @@ const Dashboard: React.FC = () => {
       <Header title={t('dashboard.title')} />
       <DateFilter />
       <IonContent className="ion-padding">
-        <div className="app-container">
+        <div className="app-container" style={{ paddingBottom: '85px' }}>
           <div className="ion-margin-bottom">
             <IonText color="medium">
               <p style={{ margin: 0, fontSize: '13px', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>{t('dashboard.welcome')}</p>
@@ -372,6 +381,45 @@ const Dashboard: React.FC = () => {
             </IonGrid>
           )}
         </div>
+
+        <IonFab slot="fixed" className="dashboard-quick-add-fab">
+          <div className="dashboard-fab-group">
+            <IonFabButton 
+              onClick={() => setShowMagicModal(true)} 
+              className="dashboard-magic-btn"
+              title="Añadir con IA / Escanear"
+            >
+              <IonIcon icon={colorWandOutline} />
+            </IonFabButton>
+            <IonFabButton 
+              onClick={() => setShowAddModal(true)} 
+              className="dashboard-add-btn"
+              title="Añadir Gasto"
+            >
+              <IonIcon icon={add} />
+            </IonFabButton>
+          </div>
+        </IonFab>
+
+        <TransactionModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onSaved={() => {
+            setShowAddModal(false);
+            fetchDashboardData();
+            fetchCreditCards();
+          }}
+        />
+
+        <MagicModal
+          isOpen={showMagicModal}
+          onClose={() => setShowMagicModal(false)}
+          onSuccess={() => {
+            setShowMagicModal(false);
+            fetchDashboardData();
+            fetchCreditCards();
+          }}
+        />
       </IonContent>
     </IonPage>
   );
